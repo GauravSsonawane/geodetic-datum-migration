@@ -39,6 +39,8 @@ ellipsoidal_height]` in degrees and metres on WGS84, and each feature carries:
 }
 ```
 
+`height_orthometric_m` is the record's height as archived, in metres.
+
 `/app/out/qa_report.json`:
 
 ```json
