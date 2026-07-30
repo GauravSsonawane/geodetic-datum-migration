@@ -86,8 +86,14 @@ while the worst an honest station manages is 2.53 m on the screening statistic a
 0.41 m on the post-fit residuals.
 
 Reported residuals are recomputed from the agent's *own* parameters and compared as
-vector magnitudes, so either residual sign convention passes while invented numbers
-do not.
+whole east/north/up vectors, allowing an overall sign flip so either direction
+convention passes. Magnitude-only comparison was tried first and is not enough: any
+triple of the right length satisfies it, including `[‖residual‖, 0, 0]`, which
+fabricates a zero north and zero vertical component.
+
+Every numeric field must be finite. NaN compares `False` against any bound, so a
+check phrased as "flag it when the error exceeds the tolerance" accepts NaN
+silently — the tests assert the passing condition instead.
 
 Under Harbor 0.20.0:
 

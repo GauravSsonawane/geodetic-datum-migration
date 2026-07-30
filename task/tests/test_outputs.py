@@ -41,6 +41,17 @@ TRUTH_KEYS = ["dx", "dy", "dz", "rx", "ry", "rz", "s"]
 
 
 # --- fixtures ----------------------------------------------------------------
+def _finite(v):
+    """A real, finite number. bool is not a number here, and NaN is not a value.
+
+    NaN matters: every comparison against it is False, so a check written as
+    "flag it when the error exceeds the tolerance" silently accepts NaN. Tests
+    below either use this helper or assert the passing condition directly.
+    """
+    return (isinstance(v, (int, float)) and not isinstance(v, bool)
+            and math.isfinite(v))
+
+
 def _load_json(path):
     if not os.path.isfile(path):
         pytest.fail("required output file %s was not produced" % path)
@@ -173,8 +184,18 @@ def tie_stations():
                 src=_to_ecef(lat, lon, int(row["legacy_ellip_height_mm"]) / 1000.0,
                              KID62_A, KID62_E2),
                 dst=_to_ecef(float(row["wgs84_lat_deg"]), float(row["wgs84_lon_deg"]),
-                             float(row["wgs84_ellip_height_m"]), WGS84_A, WGS84_E2))
+                             float(row["wgs84_ellip_height_m"]), WGS84_A, WGS84_E2),
+                wlat=float(row["wgs84_lat_deg"]), wlon=float(row["wgs84_lon_deg"]))
     return out
+
+
+def _enu_basis(lat_deg, lon_deg):
+    """Rows are the east, north and up unit vectors at the station."""
+    lat, lon = math.radians(lat_deg), math.radians(lon_deg)
+    sp, cp, sl, cl = math.sin(lat), math.cos(lat), math.sin(lon), math.cos(lon)
+    return np.array([[-sl, cl, 0.0],
+                     [-sp * cl, -sp * sl, cp],
+                     [cp * cl, cp * sl, sp]])
 
 
 def _horizontal_m(lat, lon, tlat, tlon):
@@ -189,8 +210,7 @@ def test_params_schema(params):
     missing = [k for k in PARAM_KEYS if k not in params]
     assert not missing, "datum_params.json is missing keys: %s" % missing
     for k in PARAM_KEYS:
-        assert isinstance(params[k], (int, float)) and not isinstance(params[k], bool), \
-            "%s must be a number, got %r" % (k, params[k])
+        assert _finite(params[k]), "%s must be a finite number, got %r" % (k, params[k])
 
 
 def test_translation_parameters(params, truth):
@@ -242,17 +262,22 @@ def test_residuals_reported_for_kept_stations(qa, truth, tie_stations):
 
 
 def test_residuals_consistent_with_parameters(qa, params, tie_stations):
-    """Reported residuals are the ones the reported parameters actually produce.
+    """Reported east, north, up residuals are the ones the reported parameters
+    actually produce at that station.
 
-    Compared as vector magnitudes, so either residual sign convention is accepted.
+    Compared as whole vectors, allowing an overall sign flip so either direction
+    convention is accepted. Comparing magnitudes alone would not do: any triple of
+    the right length would pass, including a fabricated one that puts the whole
+    residual on a single axis.
     """
     for sid, triple in qa["tie_point_residuals"].items():
         st = tie_stations[sid]
-        expect = float(np.linalg.norm(st["dst"] - _helmert(st["src"], params)))
-        got = float(np.linalg.norm(np.asarray(triple, dtype=float)))
-        assert abs(got - expect) <= TOL_RESIDUAL_M, \
-            "residual for %s is %.4f m but the reported parameters give %.4f m" \
-            % (sid, got, expect)
+        expect = _enu_basis(st["wlat"], st["wlon"]) @ (st["dst"] - _helmert(st["src"], params))
+        got = np.asarray(triple, dtype=float)
+        err = min(float(np.linalg.norm(got - expect)), float(np.linalg.norm(got + expect)))
+        assert err <= TOL_RESIDUAL_M, \
+            "residual for %s is %s but the reported parameters give %s (off by %.4f m)" \
+            % (sid, np.round(got, 4).tolist(), np.round(expect, 4).tolist(), err)
 
 
 def test_rms_residual(qa):
@@ -260,7 +285,7 @@ def test_rms_residual(qa):
     triples = [np.asarray(v, dtype=float) for v in qa["tie_point_residuals"].values()]
     expect = math.sqrt(sum(float(v @ v) for v in triples) / len(triples))
     got = qa.get("rms_residual_m")
-    assert isinstance(got, (int, float)), "rms_residual_m must be a number"
+    assert _finite(got), "rms_residual_m must be a finite number, got %r" % (got,)
     assert abs(got - expect) <= 1e-3 + 1e-2 * expect, \
         "rms_residual_m is %.4f but the reported residuals give %.4f" % (got, expect)
     assert RMS_BAND_M[0] <= got <= RMS_BAND_M[1], \
@@ -303,11 +328,13 @@ def test_feature_structure(features):
         assert isinstance(coords, (list, tuple)) and len(coords) == 3, \
             "coordinates must be [longitude, latitude, ellipsoidal_height]"
         for v in coords:
-            assert isinstance(v, (int, float)) and not isinstance(v, bool), \
-                "coordinates must be numbers, got %r" % (coords,)
+            assert _finite(v), "coordinates must be finite numbers, got %r" % (coords,)
         props = f.get("properties") or {}
         for key in ("record_id", "name", "height_orthometric_m"):
             assert key in props, "feature %r is missing property %s" % (props, key)
+        assert _finite(props["height_orthometric_m"]), \
+            "height_orthometric_m must be a finite number, got %r" \
+            % (props["height_orthometric_m"],)
 
 
 def test_horizontal_positions(by_id, truth):
@@ -342,8 +369,9 @@ def test_orthometric_heights_carried_through(by_id, truth):
     bad = []
     for rid, f in by_id.items():
         got = f["properties"]["height_orthometric_m"]
-        if not isinstance(got, (int, float)) or abs(got - truth["records"][rid][3]) > TOL_ORTHO_M:
-            bad.append((rid, got, truth["records"][rid][3]))
+        want = truth["records"][rid][3]
+        if not (_finite(got) and abs(got - want) <= TOL_ORTHO_M):
+            bad.append((rid, got, want))
     assert not bad, "%d records have a wrong archived height, e.g. %s" % (len(bad), bad[:4])
 
 

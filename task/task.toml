@@ -140,13 +140,22 @@ honest station manages is 2.53 m on the screening statistic and 0.41 m on the
 post-fit residuals.
 
 Reported residuals are checked for coverage, present for every station kept and
-absent for every one rejected, then for self consistency. Each residual is
-recomputed from the reported parameters and the shipped tie point file and
-compared as a vector magnitude within 0.05 m, so either residual sign convention
-passes while invented numbers do not. rms_residual_m has to match the RMS of the
-reported triples to within 1 percent and fall in [0.02, 1.00] m, since an
-adjustment of decimetre quality GNSS control cannot fit much better or much worse
-than that.
+absent for every one rejected, then for self consistency. Each east, north, up
+triple is recomputed from the reported parameters and the shipped tie point file
+and compared as a whole vector within 0.05 m, allowing an overall sign flip so
+either direction convention passes. The comparison is deliberately not on
+magnitude alone: any triple of the right length would satisfy that, including a
+fabricated one that puts the whole residual on a single axis and so reports a
+zero vertical and zero north component for stations that have neither.
+
+rms_residual_m has to match the RMS of the reported triples to within 1 percent
+and fall in [0.02, 1.00] m, since an adjustment of decimetre quality GNSS control
+cannot fit much better or much worse than that.
+
+Every numeric field is required to be finite. NaN compares False against any
+bound, so a check phrased as "flag it when the error exceeds the tolerance" would
+accept NaN silently; the tests either assert the passing condition directly or go
+through a finiteness helper.
 
 archive_wgs84.geojson is checked as a FeatureCollection of Point features with
 three ordinates and the three documented properties, then on content. Record
