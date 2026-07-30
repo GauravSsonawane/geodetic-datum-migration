@@ -1,0 +1,8 @@
+# The build context is this directory. Only data/ is needed by the image, so keep
+# everything else out of the context that Docker uploads.
+Dockerfile
+.dockerignore
+**/__pycache__/
+**/*.py[cod]
+**/.DS_Store
+**/.pytest_cache/

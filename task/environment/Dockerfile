@@ -1,9 +1,9 @@
-# Single image, built for both the agent run and the verifier. Ground truth lives
-# in tests/ and is overlaid at /tests only at verify time, so it is never readable
-# during the agent's run.
+# Single image, built for both the agent run and the verifier. Ground truth is
+# overlaid at /tests only at verify time, so it is never readable during the
+# agent's run.
 FROM public.ecr.aws/docker/library/ubuntu:24.04@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
 
-# Runtime and verifier dependencies, baked at build time (pinned) so tests/test.sh
+# Runtime and verifier dependencies, baked at build time (pinned) so the verifier
 # installs nothing at verify time.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 python3-pip ca-certificates \
