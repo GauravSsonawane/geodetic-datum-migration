@@ -135,7 +135,13 @@ def make_name(long_wanted):
 
 
 # ----------------------------------------------------------------- tie points
-BLUNDERS = ["TP007", "TP016", "TP022", "TP024", "TP030"]
+# Gross keying errors (km scale) and two quiet ones. The gross errors are what
+# wreck a contaminated least squares fit, so they have to stay: they are the reason
+# screening post-fit residuals identifies the wrong stations. The quiet pair sits
+# below a typical robust pre-screen and only shows up in the residuals of a fit
+# that is already clean, so a solver who screens once and stops carries one into
+# the adjustment and lands an RMS well above the decimetre the GNSS side promises.
+BLUNDERS = ["TP007", "TP011", "TP016", "TP022", "TP024", "TP027", "TP030"]
 
 
 def tie_encoding(k):
@@ -163,7 +169,7 @@ def gen_tie_points():
 
 
 def apply_blunders(rows):
-    """Inject realistic transcription errors into the legacy side of 5 stations."""
+    """Inject realistic transcription errors into the legacy side of BLUNDERS."""
     by_id = {r[0]: r for r in rows}
     report = {}
 
@@ -173,6 +179,10 @@ def apply_blunders(rows):
         before = DECODE[enc](f.ljust(30))
         if sid == "TP007":                        # seconds digits transposed
             f = f[:4] + f[6] + f[5] + f[4] + f[7:]
+        elif sid == "TP011":                      # milliarcsecond digits transposed
+            f = f[:6] + f[8] + f[7] + f[6] + f[9:]
+        elif sid == "TP027":                      # single-digit slip, metres column
+            f = "%012d" % (int(f[0:12]) + 8000) + f[12:]
         elif sid == "TP016":                      # longitude hemisphere flipped
             f = f[:21] + "W" + f[22:]
         elif sid == "TP022":                      # decimal degrees keyed into DMS slot

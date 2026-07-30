@@ -1,9 +1,11 @@
 {
  "blunder_tie_points": [
   "TP007",
+  "TP011",
   "TP016",
   "TP022",
   "TP024",
+  "TP027",
   "TP030"
  ],
  "expected_record_count": 1170,

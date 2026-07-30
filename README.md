@@ -28,12 +28,18 @@ Five separate ways to produce tidy output that is wrong:
 2. **Three coordinate encodings.** Packed sexagesimal, decimal degrees, and plane
    coordinates on a local Transverse Mercator grid. The last needs an inverse
    projection before it is any use.
-3. **Gross errors in the tie stations.** Five legacy coordinates were miskeyed:
-   transposed seconds, a flipped hemisphere letter, decimal degrees typed into a
-   sexagesimal field, easting and northing the wrong way round, a kilometre slip.
-   Least squares has no defence against these. Fitting once and screening the
-   residuals fingers the *wrong* stations, and can settle on a parameter set that
-   fits the bad control and discards the good.
+3. **Errors in the tie stations, loud and quiet.** Seven legacy coordinates were
+   miskeyed: transposed seconds, a flipped hemisphere letter, decimal degrees typed
+   into a sexagesimal field, easting and northing the wrong way round, a kilometre
+   slip, and two smaller digit slips. Least squares has no defence against the
+   large ones — fitting once and screening the residuals fingers the *wrong*
+   stations, and can settle on a parameter set that fits the bad control and
+   discards the good. But a robust pre-screen alone is not enough either: the
+   smallest error is worth 8 m and hides inside the scatter the screen must
+   tolerate, surfacing only in the residuals of an already-clean fit. Screening
+   once and stopping carries it into the parameters, and is rejected three ways —
+   wrong rejected set, RMS 1.42 m outside the [0.02, 1.00] band, and translations
+   off by 20.9 m against a 10.0 m tolerance.
 4. **Vertical datum.** Archived heights are orthometric over local MSL, while the
    transformation and the requested output are ellipsoidal. Skip the separation
    grid and every height is out by about 38 m with the horizontal work still
@@ -80,10 +86,13 @@ the rotations, because the seven parameters of a small region similarity
 transformation are correlated. Grading the parameters at half a metre would fail
 correct work.
 
-The rejected station set is graded on exact equality, which is safe here because
-the populations do not overlap: blunders move their stations by 998 m to 16 000 km,
-while the worst an honest station manages is 2.53 m on the screening statistic and
-0.41 m on the post-fit residuals.
+The rejected station set is graded on exact equality, which is safe because the
+populations do not overlap. Six blunders move their stations by 27 m to 16 000 km
+against a worst honest screening statistic of 2.52 m. The seventh is the 8 m one,
+which a single screening pass may or may not catch depending on where its cut
+falls — either way it ends up rejected, because after a clean fit it sits ~20×
+above the worst honest post-fit residual of 0.41 m. The same set comes out
+regardless of which stage removes each station.
 
 Reported residuals are recomputed from the agent's *own* parameters and compared as
 whole east/north/up vectors, allowing an overall sign flip so either direction

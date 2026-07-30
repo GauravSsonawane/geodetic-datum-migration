@@ -55,8 +55,16 @@ residuals fingers the wrong stations, and can settle on a parameter set that fit
 the bad control and throws away the good. Getting past that means seeing that the
 blunders have to be cut on something that never sees a least squares solution, and
 setting the cut from the spread of the data in hand rather than from a remembered
-rule of thumb. Do the file handling well and the adjustment badly and the output
-is tidy, plausible and wrong, which is the failure this task is built to catch.
+rule of thumb.
+
+The errors are not all loud, either. The quietest is a single digit in the metres
+column, worth 8 m, which hides inside the scatter a robust screen has to tolerate
+and rides through into the adjustment. Nothing flags it except the thing a
+geodesist checks by reflex: the fit comes out near 1.4 m RMS when the GNSS control
+is good to a decimetre, so the adjustment is still carrying something. Screening
+once and moving on leaves it there. Do the file handling well and the adjustment
+badly and the output is tidy, plausible and wrong, which is the failure this task
+is built to catch.
 
 The data is synthetic, built from an invented island datum, so no parameter set,
 station or answer is retrievable online. The extents, ellipsoid, grid definition,
@@ -82,10 +90,18 @@ only move a station a few metres relative to its neighbours, so the raw differen
 vectors of the honest stations sit in a tight cluster around their component-wise
 median, while a miskeyed one leaves the cluster by whatever the keying error was
 worth. Screening those difference vectors on a median absolute deviation scale,
-with a floor at the level honest scatter can reach, separates the two populations
-by more than two orders of magnitude. It also never touches a least squares
-solution, which is why it survives the blunders it is looking for. On this archive
-it picks out five stations.
+with a floor at the level honest scatter can reach, separates the gross errors
+cleanly. It also never touches a least squares solution, which is why it survives
+the blunders it is looking for. On this archive it picks out six stations.
+
+One screening pass is not enough. The smallest keying error here is a single digit
+in the metres column, worth 8 m, which sits inside the spread the screen has to
+tolerate and so comes through into the adjustment. It is obvious afterwards: with
+it still in, the fit lands near 1.4 m RMS against a GNSS side the prompt says is
+good to a decimetre. Snooping the post-fit residuals once and dropping what stands
+out picks it up, since after a clean fit it sits about twenty times above the worst
+honest residual. Skip that second pass and one blunder is carried into the
+parameters.
 
 Adjust what is left for the seven parameters. Linearised about the identity, the
 observation equations are linear in the three translations, the three small
@@ -109,7 +125,7 @@ stations kept, their 3D RMS, the stations rejected, and the void records left ou
 
 verification_explanation = """
 Ground truth sits only in tests/ground_truth.json, overlaid at verify time. It
-holds the generating parameters, the identifiers of the five miskeyed stations and
+holds the generating parameters, the identifiers of the seven miskeyed stations and
 the thirty void records, and the true WGS84 position, ellipsoidal height, archived
 orthometric height and full name of all 1170 complete records. The verifier reads
 nothing but the three files instruction.md asks for. Fifteen tests cover one stated
@@ -134,10 +150,17 @@ written out as a full set of output files and put through this verifier: the
 defensible ones scored 1, the failures scored 0.
 
 The rejected station set is compared for exact equality. The two populations do not
-overlap, so there is nothing borderline for a sound method to disagree about. The
-injected errors move their stations by 998 m to 16000 km, while the worst an
-honest station manages is 2.53 m on the screening statistic and 0.41 m on the
-post-fit residuals.
+overlap, so there is nothing borderline for a sound method to disagree about. Five
+of the injected errors move their stations by 998 m to 16000 km and one by 27 m,
+against a worst honest station of 2.52 m on the screening statistic. The seventh is
+the 8 m one, which any single screening pass may or may not catch depending on
+where its cut falls; either way it is caught, because after a clean fit it sits at
+about 8 m against a worst honest post-fit residual of 0.41 m, a factor of twenty.
+So the same set comes out regardless of which stage each station is removed at.
+
+Carrying that station into the adjustment is rejected three times over, not once:
+the set comparison fails, rms_residual_m lands at 1.42 m and leaves the [0.02,
+1.00] band, and the translations miss by 20.9 m against a 10.0 m tolerance.
 
 Reported residuals are checked for coverage, present for every station kept and
 absent for every one rejected, then for self consistency. Each east, north, up
