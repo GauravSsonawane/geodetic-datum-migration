@@ -1,0 +1,6 @@
+# archive.dat is read by fixed column positions and its spec declares LF
+# terminators, so keep line endings LF regardless of local git config.
+* text=auto eol=lf
+*.dat text eol=lf
+*.grd text eol=lf
+*.csv text eol=lf

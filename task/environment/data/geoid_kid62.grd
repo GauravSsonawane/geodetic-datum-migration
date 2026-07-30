@@ -1,0 +1,19 @@
+# Kaveri Island geoid-ellipsoid separation model KIG61
+# N = h(ellipsoidal, KID62) - H(orthometric, Kaveri MSL 1961), metres
+lat_min 7.0
+lat_max 10.0
+lon_min 72.0
+lon_max 75.0
+d_lat 0.5
+d_lon 0.5
+n_lat 7
+n_lon 7
+# one row per latitude, ascending from lat_min;
+# columns ascending in longitude from lon_min
+  -39.074   -40.432   -41.476   -42.132   -42.376   -42.232   -41.774
+  -38.985   -40.194   -41.087   -41.593   -41.687   -41.394   -40.785
+  -38.460   -39.518   -40.262   -40.618   -40.562   -40.118   -39.360
+  -37.692   -38.600   -39.194   -39.400   -39.194   -38.600   -37.692
+  -36.924   -37.683   -38.126   -38.182   -37.826   -37.083   -36.024
+  -36.398   -37.007   -37.301   -37.207   -36.701   -35.807   -34.598
+  -36.310   -36.768   -36.912   -36.668   -36.012   -34.968   -33.610

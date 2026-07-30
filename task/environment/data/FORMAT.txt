@@ -1,0 +1,103 @@
+KAVERI ISLAND SURVEY DEPARTMENT
+GEODETIC ARCHIVE INTERCHANGE FORMAT KA-71 (rev. 1987)
+
+This document is the normative specification of the files distributed with the
+archive.  Column positions are 1-based and inclusive.  All files are ASCII with
+LF line terminators.
+
+
+1. REFERENCE SYSTEMS
+--------------------
+
+1.1 Horizontal datum: KAVERI ISLAND DATUM 1962 (KID62).
+    Reference ellipsoid:
+        semi-major axis      a    = 6377295.664 m
+        inverse flattening   1/f  = 300.8017
+
+1.2 Projected system: KAVERI GRID 1962, a Transverse Mercator projection on the
+    KID62 ellipsoid.
+        latitude of origin        8.0 N
+        central meridian         73.5 E
+        scale factor at the CM    0.99965
+        false easting        250000.000 m
+        false northing       150000.000 m
+
+1.3 Vertical datum: KAVERI MSL 1961.  Heights recorded in ARCHIVE.DAT are
+    orthometric heights above this level surface.
+
+1.4 Separation model KIG61 (file geoid_kid62.grd) supplies
+        N = h - H
+    where h is ellipsoidal height above the KID62 ellipsoid and H is the
+    orthometric height above KAVERI MSL 1961.  The model is a regular grid in
+    KID62 latitude and longitude; its header carries the grid extents, spacing
+    and dimensions, one row of values per latitude ascending from lat_min, with
+    columns ascending in longitude from lon_min.  Documented usage of the model
+    is bilinear interpolation between the four surrounding nodes.
+
+
+2. ARCHIVE.DAT  --  station register, one 71-character line per record
+----------------------------------------------------------------------
+
+    cols  1        record type: G, D, P, or +
+    cols  2 -  8   record identifier
+    cols  9 - 32   station name, blank padded
+    cols 33 - 62   coordinate field, layout per record type (section 2.1)
+    cols 63 - 71   height field, signed integer (section 2.2)
+
+2.1 Coordinate field layouts.
+
+    Type G  --  geodetic, sexagesimal
+        cols 33 - 42   latitude   DDMMSSsssH
+        col  43        blank
+        cols 44 - 54   longitude  DDDMMSSsssH
+        SSsss is seconds carrying three decimal places (SS.sss).  H is the
+        hemisphere letter: N or S for latitude, E or W for longitude.
+
+    Type D  --  geodetic, decimal degrees
+        cols 33 - 43   latitude   sDD.ddddddd
+        col  44        blank
+        cols 45 - 56   longitude  sDDD.ddddddd
+        s is an explicit + or - sign.
+
+    Type P  --  KAVERI GRID 1962 plane coordinates
+        cols 33 - 44   easting, integer millimetres
+        col  45        blank
+        cols 46 - 57   northing, integer millimetres
+
+    Unused trailing positions of the coordinate field are blank.
+
+2.2 Height field.  Signed integer orthometric height.  Units are decimetres on
+    type G and type P records and centimetres on type D records.
+
+2.3 Continuation lines.  A station name longer than 24 characters is carried
+    over onto a following line of type +, which repeats the record identifier in
+    cols 2 - 8 and holds the next 24 characters of the name in cols 9 - 32; cols
+    33 - 71 are blank.  The full station name is the concatenation of the 24
+    character segments in file order, with trailing blanks of the assembled
+    string removed.  A continuation line is not a record of its own.
+
+2.4 Void markers.  A field whose characters are all the digit 9 is a void
+    marker: the quantity was never observed or has been lost.  Void markers
+    occur in the coordinate field and in the height field.
+
+
+3. TIEPOINTS.CSV  --  datum connection stations
+-----------------------------------------------
+
+Comma separated, one header line, one line per station.  Columns:
+
+    station_id               station identifier
+    legacy_encoding          G or P; identifies the layout of the next column
+    legacy_coord_field       KID62 position, encoded exactly as the coordinate
+                             field of an ARCHIVE.DAT record of that type, with
+                             trailing blanks removed
+    legacy_ellip_height_mm   ELLIPSOIDAL height above the KID62 ellipsoid, in
+                             integer millimetres.  This column is not an
+                             orthometric height and needs no separation model.
+    wgs84_lat_deg            \
+    wgs84_lon_deg             >  WGS84 position from the 2024 GNSS campaign;
+    wgs84_ellip_height_m     /   degrees, and ellipsoidal height in metres
+
+The legacy columns are transcriptions from the 1962-1971 field books.  The
+WGS84 columns are the adjusted result of static GNSS observations on the
+surviving marks.

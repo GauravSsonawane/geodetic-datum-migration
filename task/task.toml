@@ -1,8 +1,12 @@
-artifacts = []  # paths the verifier reads from the agent (e.g. ["/app/output.json"]) — must be above the first [section]
+artifacts = [
+  "/app/out/datum_params.json",
+  "/app/out/archive_wgs84.geojson",
+  "/app/out/qa_report.json",
+]
 
 [task]
-name = "dynamo/your-task-name"  # required format: org/name (Harbor needs the slash); name part lowercase kebab-case, <=3 words
-description = ""                 # one-line summary of the task
+name = "dynamo/migrate-geodetic-archive"
+description = "Recover an unpublished geodetic datum transformation from blunder-contaminated tie points and migrate a legacy survey archive to WGS84."
 
 [metadata]
 # --- Pre-seeded for you when this repo was created — DO NOT EDIT ---
@@ -12,27 +16,175 @@ subcategory = "Geospatial data processing"                   # diversity subcate
 model_tested = "Opus-4.8"           # difficulty-benchmarking model (do not change)
 agent_tested = "Terminus-2"        # difficulty-benchmarking agent (do not change)
 # --- You fill these in ---
-# task_objective / artifact_type: pick from .dynamo/diversity-taxonomy.toml (lowercase snake_case).
-task_objective = []                # e.g. ["implement", "debug"]
-artifact_type = []                 # e.g. ["codebase", "configuration_file"]
-expert_time_estimate_hours = 0     # best-case hours for a focused domain expert with the intended insight
-difficulty_explanation = ""        # why this task is hard for agents and humans
-solution_explanation = ""          # high-level approach and key insights
-verification_explanation = ""      # how the tests verify correctness
+task_objective = ["migrate", "transform", "validate"]
+artifact_type = ["dataset_or_tabular_file", "generated_output_artifact"]
+expert_time_estimate_hours = 6
+
+difficulty_explanation = """
+Every country that has moved off a local datum has paid someone to do this job.
+The awkward version, and a common one in older archives, is that the
+transformation to WGS84 was never written down, so it has to be pulled back out of
+the register before a single record can be moved. Agency geodesists and cadastral
+GIS staff do this work, and the three outputs asked for here are what they hand
+over at the end of it: the parameters, the migrated register, and a QA sheet
+showing which control was used and how well it fitted.
+
+The difficulty is geodetic rather than programmatic. A transformation of this kind
+lives in geocentric Cartesian space, so the legacy positions have to go through
+the legacy ellipsoid on the way in. Its constants are in the shipped format spec,
+and its semi-major axis is 841 m off WGS84. Take a familiar default instead and
+every recovered parameter is out by more than a hundred metres while the residuals
+still look reasonable, which is the sort of error that survives review. The legacy
+positions also arrive in three encodings: packed sexagesimal, decimal degrees, and
+plane coordinates on a local Transverse Mercator grid. The plane subset has to
+come back through an inverse projection on that same legacy ellipsoid before it is
+any use. Heights are a second trap. The archived heights are orthometric over a
+local mean sea level datum, while both the transformation and the requested output
+are ellipsoidal, so the separation grid has to be interpolated and applied. Leave
+it out and the horizontal work still checks out while every height is wrong by
+about 38 m. The seven parameters are also reported under a named sign convention,
+and the two conventions in use differ by the sign of all three rotations.
+
+The estimation is where a plausible attempt is most likely to come apart. Some of
+the legacy tie coordinates were miskeyed by hand: transposed seconds, a flipped
+hemisphere letter, decimal degrees typed into a sexagesimal field, an easting and
+northing the wrong way round, a kilometre slip. Least squares has no defence
+against errors that size. One station kilometres out of place spreads itself
+across every residual, so the obvious move of fitting once and reading the
+residuals fingers the wrong stations, and can settle on a parameter set that fits
+the bad control and throws away the good. Getting past that means seeing that the
+blunders have to be cut on something that never sees a least squares solution, and
+setting the cut from the spread of the data in hand rather than from a remembered
+rule of thumb. Do the file handling well and the adjustment badly and the output
+is tidy, plausible and wrong, which is the failure this task is built to catch.
+
+The data is synthetic, built from an invented island datum, so no parameter set,
+station or answer is retrievable online. The extents, ellipsoid, grid definition,
+geoid gradient, the decimetre level GNSS noise on the modern side and the list of
+transcription errors are all modelled on real national archives of the period.
+"""
+
+solution_explanation = """
+Start with /app/data/FORMAT.txt. It is normative, and it carries the legacy
+ellipsoid (a = 6377295.664 m, 1/f = 300.8017), the local Transverse Mercator
+definition, the record layout with its three coordinate encodings and two height
+units, the continuation line and void marker rules, and the note that tie point
+heights are already ellipsoidal while archive heights are orthometric.
+
+Recover the transformation before touching the register. Decode each tie station's
+legacy field according to its encoding, running the type P stations back through an
+inverse Transverse Mercator on the legacy ellipsoid, then put both sides into
+geocentric Cartesian coordinates, the legacy side on the legacy ellipsoid and the
+GNSS side on WGS84.
+
+Cut the bad control first. Over a region this small the rotation and scale terms
+only move a station a few metres relative to its neighbours, so the raw difference
+vectors of the honest stations sit in a tight cluster around their component-wise
+median, while a miskeyed one leaves the cluster by whatever the keying error was
+worth. Screening those difference vectors on a median absolute deviation scale,
+with a floor at the level honest scatter can reach, separates the two populations
+by more than two orders of magnitude. It also never touches a least squares
+solution, which is why it survives the blunders it is looking for. On this archive
+it picks out five stations.
+
+Adjust what is left for the seven parameters. Linearised about the identity, the
+observation equations are linear in the three translations, the three small
+rotations and the scale, so a single solve is enough; running the full non-linear
+model through a couple of iterations costs nothing and settles the question. Keep
+the rotations in the position vector sense the prompt names, and carry the arc
+second and part per million factors in the design matrix so the normal matrix
+stays well conditioned. Snoop the post-fit residuals once at the metre level to
+check nothing subtler is left. The adjustment settles at about 0.19 m 3D RMS,
+which is what decimetre GNSS should give, and is the sign that the right stations
+went out.
+
+Then run the register through it. Assemble records across continuation lines, drop
+anything with a void coordinate or height field, decode positions by record type
+and heights in decimetres or centimetres by record type, take each orthometric
+height to ellipsoidal by bilinear interpolation of the separation grid, transform,
+and convert back to geodetic coordinates on WGS84. Report the parameters, the
+migrated FeatureCollection, and the QA figures: topocentric residuals for the
+stations kept, their 3D RMS, the stations rejected, and the void records left out.
+"""
+
+verification_explanation = """
+Ground truth sits only in tests/ground_truth.json, overlaid at verify time. It
+holds the generating parameters, the identifiers of the five miskeyed stations and
+the thirty void records, and the true WGS84 position, ellipsoidal height, archived
+orthometric height and full name of all 1170 complete records. The verifier reads
+nothing but the three files instruction.md asks for. Fifteen tests cover one stated
+requirement each.
+
+datum_params.json is checked for the seven documented numeric keys, then each
+translation, each rotation and the scale go against the generating values. Formal
+standard deviations from the adjustment on clean control are 2.2 to 2.7 m on the
+translations, 0.06 to 0.08 arc seconds on the rotations and 0.27 ppm on the scale.
+The seven parameters of a small region similarity transformation are correlated, so
+the bands have to bracket parameter uncertainty rather than the much tighter
+coordinate uncertainty. They are set at 10.0 m, 0.35 arc seconds and 1.0 ppm,
+roughly four sigma, and were checked both ways rather than against the reference
+solution alone. Other defensible adjustments stay well inside: dropping the two
+largest surviving residuals gives 2.2 m and 0.084 arc seconds, using only twelve
+tie stations gives 4.2 m, 0.155 arc seconds and 0.226 ppm. The methodological
+failures land well outside: a translation only shift gives 73 m and 2.42 arc
+seconds, taking the legacy side through the WGS84 ellipsoid gives 139 m and
+110 ppm, reporting rotations under the coordinate frame convention misses by 4.84
+arc seconds, and leaving the blunders in misses by kilometres. Each of those was
+written out as a full set of output files and put through this verifier: the
+defensible ones scored 1, the failures scored 0.
+
+The rejected station set is compared for exact equality. The two populations do not
+overlap, so there is nothing borderline for a sound method to disagree about. The
+injected errors move their stations by 998 m to 16000 km, while the worst an
+honest station manages is 2.53 m on the screening statistic and 0.41 m on the
+post-fit residuals.
+
+Reported residuals are checked for coverage, present for every station kept and
+absent for every one rejected, then for self consistency. Each residual is
+recomputed from the reported parameters and the shipped tie point file and
+compared as a vector magnitude within 0.05 m, so either residual sign convention
+passes while invented numbers do not. rms_residual_m has to match the RMS of the
+reported triples to within 1 percent and fall in [0.02, 1.00] m, since an
+adjustment of decimetre quality GNSS control cannot fit much better or much worse
+than that.
+
+archive_wgs84.geojson is checked as a FeatureCollection of Point features with
+three ordinates and the three documented properties, then on content. Record
+membership has to equal the complete record set exactly, with n_records_migrated
+agreeing, and excluded_record_ids has to equal the void set exactly, with
+n_records_excluded_void agreeing. That pair is what catches mishandling of the
+void markers or the continuation lines, either of which throws the record count
+out. Horizontal error is graded at 0.30 m RMS and 0.75 m worst case: the reference
+gives 0.018 m RMS, the loosest defensible variant tried 0.052 m, and the nearest
+failure 0.894 m RMS with 1.54 m worst case, so the band sits about six times above
+the sound spread and three times below the nearest failure. Ellipsoidal height is
+graded at 1.50 m RMS and 4.00 m worst case: the reference gives 0.033 m, nearest
+neighbour interpolation of the separation grid gives 0.378 m RMS and 1.26 m worst
+case, and ignoring the grid gives 38.4 m. Nearest neighbour is a defensible reading
+even though the model documents bilinear, so the band lets any reasonable
+interpolation through and still rejects skipping the step by a factor of twenty
+five. height_orthometric_m goes against the archived value within 0.05 m, which is
+what shows the decimetre and centimetre units were read per record type. Names are
+compared with whitespace runs collapsed, so assembling the continuation lines is
+graded without hanging on how the segments are joined.
+
+Nothing in the task depends on a live service or on random state. The data is fixed
+in the image and the dependencies are pinned.
+"""
 
 [verifier]
-timeout_sec = 120.0                # increase based on your test suite's runtime demands
+timeout_sec = 180.0
 # Canonical TB2: the verifier runs in the environment image (no separate tests/Dockerfile).
 # Harbor overlays tests/ at verify time; leave environment_mode unset for this shared model.
 
 [agent]
-timeout_sec = 120.0                # raise for hard tasks — agents may run for many minutes or hours
+timeout_sec = 3600.0
 
 [environment]
-build_timeout_sec = 600.0          # max seconds for the Docker build
-cpus = 1                           # increase for parallel/compute-heavy workloads
-memory_mb = 2048                   # increase for large datasets or in-memory processing
-storage_mb = 10240                 # increase for tasks with large files or build artifacts
-gpus = 0                           # max 1, expect H100
-allow_internet = true              # open internet is available to the agent
-mcp_servers = []                   # optional MCP servers to expose to the agent
+build_timeout_sec = 900.0
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240
+gpus = 0
+allow_internet = true
+mcp_servers = []
