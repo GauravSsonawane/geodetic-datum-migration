@@ -57,14 +57,21 @@ blunders have to be cut on something that never sees a least squares solution, a
 setting the cut from the spread of the data in hand rather than from a remembered
 rule of thumb.
 
-The errors are not all loud, either. The quietest is a single digit in the metres
-column, worth 8 m, which hides inside the scatter a robust screen has to tolerate
-and rides through into the adjustment. Nothing flags it except the thing a
-geodesist checks by reflex: the fit comes out near 1.4 m RMS when the GNSS control
-is good to a decimetre, so the adjustment is still carrying something. Screening
-once and moving on leaves it there. Do the file handling well and the adjustment
-badly and the output is tidy, plausible and wrong, which is the failure this task
-is built to catch.
+The errors are not all loud, either, and that is where the work is. They run down a
+ladder: kilometres, then 27 m, 8 m, 3 m, 2.5 m, and finally 1.5 m. A robust screen
+of the raw difference vectors has to tolerate a couple of metres of honest scatter,
+so it clears the loud ones and leaves four of the quiet ones sitting in the
+adjustment. They only become visible afterwards, in the residuals of a fit that is
+already clean, where the honest floor is four tenths of a metre. So the cut that
+separates them has to be read off the residual spread in hand. A remembered figure
+in the low metres, the sort of number that sounds right, sails past the smallest of
+them and leaves a station carrying a metre and a half of error in the parameters.
+There is no ambiguity about it once the fit is clean, since the smallest blunder
+still stands at eight sigma, but there is also no comfortable margin: the cut has
+to land between four tenths of a metre and one and a half, and nothing in the
+prompt says where. Do the file handling well and the adjustment badly and the
+output is tidy, plausible and wrong, which is the failure this task is built to
+catch.
 
 The data is synthetic, built from an invented island datum, so no parameter set,
 station or answer is retrievable online. The extents, ellipsoid, grid definition,
@@ -92,16 +99,22 @@ median, while a miskeyed one leaves the cluster by whatever the keying error was
 worth. Screening those difference vectors on a median absolute deviation scale,
 with a floor at the level honest scatter can reach, separates the gross errors
 cleanly. It also never touches a least squares solution, which is why it survives
-the blunders it is looking for. On this archive it picks out six stations.
+the blunders it is looking for. On this archive it picks out six stations and
+leaves four.
 
-One screening pass is not enough. The smallest keying error here is a single digit
-in the metres column, worth 8 m, which sits inside the spread the screen has to
-tolerate and so comes through into the adjustment. It is obvious afterwards: with
-it still in, the fit lands near 1.4 m RMS against a GNSS side the prompt says is
-good to a decimetre. Snooping the post-fit residuals once and dropping what stands
-out picks it up, since after a clean fit it sits about twenty times above the worst
-honest residual. Skip that second pass and one blunder is carried into the
-parameters.
+One screening pass is nowhere near enough. The four it leaves are worth 1.5, 2.5,
+3.1 and 8 m, all of them inside the couple of metres of honest scatter the screen
+has to tolerate, so no threshold on that statistic can separate them. They are only
+distinguishable after the adjustment, where the honest residuals top out at 0.43 m
+and the smallest blunder sits at 1.61 m. Snoop the post-fit residuals, drop the
+worst, refit, and repeat until nothing stands out.
+
+The cut for that loop is the delicate part, and it has to come from the residuals
+rather than from habit. Scale it to their robust spread and floor it near the
+decimetre the prompt gives for the GNSS side; a floor around half a metre sits
+comfortably between the honest 0.43 m and the smallest blunder at 1.61 m. Reach
+instead for a round couple of metres, which is a perfectly natural number to pick,
+and the 1.5 m station stays in the fit and the rejected set comes out one short.
 
 Adjust what is left for the seven parameters. Linearised about the identity, the
 observation equations are linear in the three translations, the three small
@@ -149,18 +162,23 @@ arc seconds, and leaving the blunders in misses by kilometres. Each of those was
 written out as a full set of output files and put through this verifier: the
 defensible ones scored 1, the failures scored 0.
 
-The rejected station set is compared for exact equality. The two populations do not
-overlap, so there is nothing borderline for a sound method to disagree about. Five
-of the injected errors move their stations by 998 m to 16000 km and one by 27 m,
-against a worst honest station of 2.52 m on the screening statistic. The seventh is
-the 8 m one, which any single screening pass may or may not catch depending on
-where its cut falls; either way it is caught, because after a clean fit it sits at
-about 8 m against a worst honest post-fit residual of 0.41 m, a factor of twenty.
-So the same set comes out regardless of which stage each station is removed at.
+The rejected station set is compared for exact equality, and the two populations do
+not overlap, so a sound method has nothing borderline to disagree about. Against a
+clean fit the honest residuals run from 0.03 m to 0.43 m and the ten blunders from
+1.61 m upward, so any cut placed between those two figures returns the same set. It
+does not matter at which stage a given station is removed, or whether the solver
+screens the raw difference vectors first at all; only that the final cut lands in
+that window.
 
-Carrying that station into the adjustment is rejected three times over, not once:
-the set comparison fails, rms_residual_m lands at 1.42 m and leaves the [0.02,
-1.00] band, and the translations miss by 20.9 m against a 10.0 m tolerance.
+The window is deliberately narrow, and it is the point of the task rather than a
+hazard to it. The smallest blunder stands at eight sigma against the honest
+residual spread, so a cut scaled to that spread, or floored near the decimetre the
+instruction gives for the GNSS observations, lands inside it comfortably. A cut
+carried in from habit at a round couple of metres does not, and returns nine
+stations instead of ten. That is graded by test_blunder_stations_rejected alone:
+the parameters of such a fit are still within tolerance and its RMS still inside
+the band, so the set comparison is doing the work, which is why it is compared
+exactly rather than by count.
 
 Nothing the verifier grades against is read from a path the agent can write to.
 The tie stations it certifies residuals against are recorded in ground truth when

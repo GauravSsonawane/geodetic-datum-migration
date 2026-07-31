@@ -211,10 +211,14 @@ def fit_helmert(src, dst):
 # that still holds the blunders fingers the wrong stations. Cut them beforehand
 # instead, on a statistic that never sees a least squares solution.
 SCREEN_FLOOR_M = 5.0
-# Decimetre GNSS against a sub-metre legacy transcription cannot leave a metre-level
-# residual behind, so anything above this after screening is another blunder rather
-# than noise.
-SNOOP_CUT_M = 2.0
+# The post-fit cut has to come from the residuals in hand, not from a remembered
+# number. The smallest transcription errors here leave residuals of a metre or two,
+# which a rule-of-thumb cut in the low metres sails straight past, while the honest
+# residuals sit near a decimetre. Scaling to the robust spread of the residuals
+# themselves puts the cut just above the honest floor wherever that floor happens to
+# be, and the blunders stand at eight sigma and beyond.
+SNOOP_SIGMA = 4.0
+SNOOP_FLOOR_M = 0.5
 
 
 def screen_blunders(stations):
@@ -243,8 +247,11 @@ def robust_fit(stations):
         dst = [s["dst"] for s in keep]
         p = fit_helmert(src, dst)
         norms = np.array([np.linalg.norm(d - helmert(s, p)) for s, d in zip(src, dst)])
+        med = float(np.median(norms))
+        sigma = 1.4826 * float(np.median(np.abs(norms - med)))
+        snoop = max(med + SNOOP_SIGMA * sigma, SNOOP_FLOOR_M)
         worst = int(np.argmax(norms))
-        if len(keep) > 10 and norms[worst] > SNOOP_CUT_M:
+        if len(keep) > 10 and norms[worst] > snoop:
             keep.pop(worst)
             continue
         return p, keep, cut

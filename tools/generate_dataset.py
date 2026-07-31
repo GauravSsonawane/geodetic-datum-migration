@@ -135,13 +135,20 @@ def make_name(long_wanted):
 
 
 # ----------------------------------------------------------------- tie points
-# Gross keying errors (km scale) and two quiet ones. The gross errors are what
-# wreck a contaminated least squares fit, so they have to stay: they are the reason
-# screening post-fit residuals identifies the wrong stations. The quiet pair sits
-# below a typical robust pre-screen and only shows up in the residuals of a fit
-# that is already clean, so a solver who screens once and stops carries one into
-# the adjustment and lands an RMS well above the decimetre the GNSS side promises.
-BLUNDERS = ["TP007", "TP011", "TP016", "TP022", "TP024", "TP027", "TP030"]
+# A ladder of keying errors rather than two clean populations.
+#
+# The gross ones (km scale) stay: they are what wrecks a contaminated least squares
+# fit, and so the reason screening post-fit residuals picks the wrong stations.
+#
+# The quiet ones run 1.5, 2.5, 3.5, 8 and 27 m. None can be separated by the robust
+# pre-screen, whose honest scatter reaches 2.5 m, so they all survive into the
+# adjustment; they are only distinguishable afterwards, where the honest residual
+# floor is 0.4 m. The smallest is deliberately close to that floor. A fixed
+# rule-of-thumb cut in the low metres leaves several of them in, which inflates the
+# RMS and biases the parameters; separating them needs a cut taken from the observed
+# residual spread, which is where they sit at eight sigma and up.
+BLUNDERS = ["TP004", "TP007", "TP009", "TP011", "TP014",
+            "TP016", "TP022", "TP024", "TP027", "TP030"]
 
 
 def tie_encoding(k):
@@ -181,6 +188,12 @@ def apply_blunders(rows):
             f = f[:4] + f[6] + f[5] + f[4] + f[7:]
         elif sid == "TP011":                      # milliarcsecond digits transposed
             f = f[:6] + f[8] + f[7] + f[6] + f[9:]
+        elif sid == "TP004":                      # 0.05" slip in the latitude seconds
+            f = enc_g(before[0] + 0.050 / 3600.0, before[1]).rstrip()
+        elif sid == "TP014":                      # 0.10" slip in the longitude seconds
+            f = enc_g(before[0], before[1] + 0.101 / 3600.0).rstrip()
+        elif sid == "TP009":                      # 2.5 m slip, easting decimetre column
+            f = "%012d" % (int(f[0:12]) + 2500) + f[12:]
         elif sid == "TP027":                      # single-digit slip, metres column
             f = "%012d" % (int(f[0:12]) + 8000) + f[12:]
         elif sid == "TP016":                      # longitude hemisphere flipped

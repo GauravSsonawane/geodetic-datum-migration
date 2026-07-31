@@ -28,18 +28,19 @@ Five separate ways to produce tidy output that is wrong:
 2. **Three coordinate encodings.** Packed sexagesimal, decimal degrees, and plane
    coordinates on a local Transverse Mercator grid. The last needs an inverse
    projection before it is any use.
-3. **Errors in the tie stations, loud and quiet.** Seven legacy coordinates were
-   miskeyed: transposed seconds, a flipped hemisphere letter, decimal degrees typed
-   into a sexagesimal field, easting and northing the wrong way round, a kilometre
-   slip, and two smaller digit slips. Least squares has no defence against the
-   large ones — fitting once and screening the residuals fingers the *wrong*
-   stations, and can settle on a parameter set that fits the bad control and
-   discards the good. But a robust pre-screen alone is not enough either: the
-   smallest error is worth 8 m and hides inside the scatter the screen must
-   tolerate, surfacing only in the residuals of an already-clean fit. Screening
-   once and stopping carries it into the parameters, and is rejected three ways —
-   wrong rejected set, RMS 1.42 m outside the [0.02, 1.00] band, and translations
-   off by 20.9 m against a 10.0 m tolerance.
+3. **Errors in the tie stations, on a ladder.** Ten legacy coordinates were miskeyed,
+   running 16 000 km, 239 km, 73 km, 998 m, 2.7 km, then 27, 8, 3.1, 2.5 and 1.5 m.
+   Least squares has no defence against the large ones — fitting once and screening
+   the residuals fingers the *wrong* stations. But a robust pre-screen is not enough
+   either: its honest scatter reaches 2.5 m, so the four quiet errors pass straight
+   through into the adjustment and are only separable afterwards, where honest
+   residuals top out at 0.43 m and the smallest blunder sits at 1.61 m.
+
+   The cut for that second pass is the crux. It has to be read off the residual
+   spread and land in the window (0.43, 1.61) m. A cut scaled to the robust spread,
+   or floored near the decimetre the prompt gives for the GNSS side, lands inside
+   it. A round "2 m" — a natural number to reach for — does not, leaves the 1.5 m
+   station in the fit, and returns nine stations instead of ten.
 4. **Vertical datum.** Archived heights are orthometric over local MSL, while the
    transformation and the requested output are ellipsoidal. Skip the separation
    grid and every height is out by about 38 m with the horizontal work still
@@ -87,12 +88,16 @@ transformation are correlated. Grading the parameters at half a metre would fail
 correct work.
 
 The rejected station set is graded on exact equality, which is safe because the
-populations do not overlap. Six blunders move their stations by 27 m to 16 000 km
-against a worst honest screening statistic of 2.52 m. The seventh is the 8 m one,
-which a single screening pass may or may not catch depending on where its cut
-falls — either way it ends up rejected, because after a clean fit it sits ~20×
-above the worst honest post-fit residual of 0.41 m. The same set comes out
-regardless of which stage removes each station.
+populations do not overlap: against a clean fit, honest residuals run 0.03–0.43 m
+and all ten blunders sit at 1.61 m or above. Any cut inside that window returns the
+same set, whatever route the solver took to it.
+
+The window is narrow on purpose — that is the task, not a hazard. The smallest
+blunder is 8σ against the honest spread, so a cut scaled to that spread lands
+inside comfortably; a habitual "2 m" does not. Note this failure is caught by
+`test_blunder_stations_rejected` *alone*: such a fit still has in-tolerance
+parameters and an in-band RMS, which is why the set is compared exactly rather
+than by count.
 
 The verifier reads no agent-writable path except the three requested outputs. The
 tie stations it certifies residuals against are recorded in `ground_truth.json` when
