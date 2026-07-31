@@ -99,6 +99,23 @@ inside comfortably; a habitual "2 m" does not. Note this failure is caught by
 parameters and an in-band RMS, which is why the set is compared exactly rather
 than by count.
 
+Fifteen cut rules a practitioner might plausibly use were run against the data.
+Eleven return the correct set — every MAD-based rule from 3σ to 6σ, 3× RMS, 5×
+median, mean+3σ, and fixed cuts at 0.5 and 1.0 m. The four that fail are all
+methodologically unsound: 4× RMS and mean+4σ use a **non-robust scale inflated by
+the very blunders they are meant to find**, a fixed 0.3 m sits below the honest
+floor, and a fixed 2 m is the habitual constant the task is built to punish.
+Separately, *no* rule works without the raw-difference pre-screen — robust rules
+then reject nothing (the 16 000 km error inflates the MAD past every cut) and fixed
+cuts reject 24 of 34 — so the two-stage structure is load-bearing.
+
+**Objective vs. judgement.** `rejected_tie_points` asks whether a coordinate was
+miskeyed, which has one right answer, so it is graded exactly. Which *sound*
+stations to carry into the adjustment is the solver's call — dropping a few extra
+as a precaution is ordinary practice — so the residual test accepts any subset of
+the sound stations, provided no miskeyed one was used and at least 10 remain. A
+conservative adjustment using 20 of the 24 sound stations passes 15/15.
+
 The verifier reads no agent-writable path except the three requested outputs. The
 tie stations it certifies residuals against are recorded in `ground_truth.json` when
 the archive is generated, not re-read from `/app/data/tiepoints.csv` — that file is
@@ -122,6 +139,14 @@ Under Harbor 0.20.0:
 harbor run -p task --agent oracle   ->  1 trial, 0 exceptions, mean 1.000
 harbor run -p task --agent nop      ->  1 trial, 0 exceptions, mean 0.000
 ```
+
+**Known and deliberate:** the JSON schemas check that required keys are present but
+do not reject *extra* keys. Three automated reviews have raised this; all three
+classify it as non-exploitable, since every graded value is still pinned to hidden
+ground truth. It is left as-is on purpose — enforcing exact key sets would fail an
+otherwise-correct submission that adds a harmless diagnostic field, turning a
+cosmetic looseness into a formatting-based failure mode, which the `outcome_verified`
+criterion warns against. Trivial to tighten if a reviewer prefers it.
 
 ## Data provenance
 

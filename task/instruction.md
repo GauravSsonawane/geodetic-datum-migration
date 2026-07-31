@@ -54,8 +54,9 @@ ellipsoidal_height]` in degrees and metres on WGS84, and each feature carries:
 }
 ```
 
-`rejected_tie_points` lists the stations you judged mis-transcribed and left out
-of the fit. `tie_point_residuals` covers the stations you kept, each as an east,
-north, up triple in metres in a local topocentric frame at that station, taken as
-the GNSS position minus the transformed legacy position. `rms_residual_m` is the
-three-dimensional RMS residual over those same kept stations.
+`rejected_tie_points` lists the stations whose legacy coordinates are
+mis-transcribed. `tie_point_residuals` covers the stations your final adjustment
+was computed from, each as an east, north, up triple in metres in a local
+topocentric frame at that station, taken as the GNSS position minus the
+transformed legacy position. `rms_residual_m` is the three-dimensional RMS
+residual over those same stations.

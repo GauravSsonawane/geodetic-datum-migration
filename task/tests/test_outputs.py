@@ -2,11 +2,11 @@
 
 Grades the three files instruction.md asks for against ground truth held only in
 /tests. The bands are justified in task.toml under verification_explanation. Each
-was checked to admit other defensible adjustments (different tie point subsets,
-different interpolation of the separation grid) and to reject the methodological
-failures the task is built around: wrong ellipsoid on the legacy side, translation
-only shift, separation grid ignored, blunders left in the fit, and rotations
-reported under the other sign convention.
+was checked to admit other defensible adjustments (a different subset of the sound
+stations carried into the fit, different interpolation of the separation grid) and
+to reject the methodological failures the task is built around: wrong ellipsoid on
+the legacy side, translation only shift, separation grid ignored, blunders left in
+the fit, and rotations reported under the other sign convention.
 """
 import json
 import math
@@ -30,6 +30,7 @@ TOL_VERT_MAX_M = 4.00
 TOL_ORTHO_M = 0.05           # the archived height, only decoded and carried through
 TOL_RESIDUAL_M = 0.05        # self-consistency of the reported residuals
 RMS_BAND_M = (0.02, 1.00)    # a decimetre-quality GNSS side cannot fit better/worse
+MIN_ADJUSTED_STATIONS = 10   # seven parameters need real redundancy behind them
 
 PARAM_KEYS = ["dx_m", "dy_m", "dz_m", "rx_arcsec", "ry_arcsec", "rz_arcsec", "scale_ppm"]
 TRUTH_KEYS = ["dx", "dy", "dz", "rx", "ry", "rz", "s"]
@@ -170,7 +171,12 @@ def test_scale_parameter(params, truth):
 
 # --- qa_report.json ----------------------------------------------------------
 def test_blunder_stations_rejected(qa, truth):
-    """Exactly the mis-transcribed connection stations are excluded from the fit."""
+    """Exactly the mis-transcribed connection stations are identified as such.
+
+    This is an objective property of the archive, not a judgement call: a station's
+    legacy coordinate either was miskeyed or was not. Which sound stations to carry
+    into the adjustment is a separate, freer choice, checked by the residual test.
+    """
     assert "rejected_tie_points" in qa, "qa_report.json is missing rejected_tie_points"
     got = set(qa["rejected_tie_points"])
     expected = set(truth["blunder_tie_points"])
@@ -179,14 +185,27 @@ def test_blunder_stations_rejected(qa, truth):
         % (sorted(got), sorted(expected - got), sorted(got - expected))
 
 
-def test_residuals_reported_for_kept_stations(qa, truth, tie_stations):
-    """Residuals are reported for every station kept, and for none that was rejected."""
+def test_residuals_reported_for_adjusted_stations(qa, truth, tie_stations):
+    """Residuals cover the stations the adjustment was computed from.
+
+    Which sound stations to carry into the adjustment is the solver's call, so this
+    does not demand all of them: dropping a few extra as a precaution is ordinary
+    practice. What it does demand is that no mis-transcribed station was used, and
+    that enough were kept for a seven-parameter fit to mean anything.
+    """
     res = qa.get("tie_point_residuals")
     assert isinstance(res, dict) and res, "tie_point_residuals must be a non-empty object"
-    kept = set(tie_stations) - set(truth["blunder_tie_points"])
-    assert set(res) == kept, \
-        "residuals cover %s; expected the %d kept stations (missing %s, extra %s)" \
-        % (len(res), len(kept), sorted(kept - set(res)), sorted(set(res) - kept))
+    sound = set(tie_stations) - set(truth["blunder_tie_points"])
+    used_bad = set(res) & set(truth["blunder_tie_points"])
+    assert not used_bad, \
+        "residuals reported for mis-transcribed stations, which cannot have been " \
+        "used in the adjustment: %s" % sorted(used_bad)
+    unknown = set(res) - set(tie_stations)
+    assert not unknown, "residuals reported for unknown stations: %s" % sorted(unknown)
+    assert len(res) >= MIN_ADJUSTED_STATIONS, \
+        "only %d stations carried into the adjustment; a seven-parameter fit needs " \
+        "at least %d to be meaningful" % (len(res), MIN_ADJUSTED_STATIONS)
+    assert set(res) <= sound  # implied by the two checks above; stated for clarity
     for sid, triple in res.items():
         assert isinstance(triple, (list, tuple)) and len(triple) == 3, \
             "residual for %s must be an east, north, up triple" % sid

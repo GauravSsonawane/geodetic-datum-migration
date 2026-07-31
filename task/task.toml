@@ -187,8 +187,17 @@ agent's own filesystem; checking the reported residuals against a file the agent
 could have rewritten would certify nothing. The only agent-side paths the verifier
 opens are the three outputs it is asked to produce.
 
-Reported residuals are checked for coverage, present for every station kept and
-absent for every one rejected, then for self consistency. Each east, north, up
+The two questions the QA report asks are graded differently, because they are
+different kinds of question. Whether a station's legacy coordinate was miskeyed is
+an objective property of the archive, so rejected_tie_points is compared exactly.
+Which of the sound stations to carry into the adjustment is the solver's call, and
+dropping a few extra as a precaution is ordinary practice, so the residual test
+takes any subset of the sound stations provided none of the miskeyed ones was used
+and at least ten remain, which is the redundancy a seven-parameter fit needs to
+mean anything. A conservative adjustment that identifies the ten correctly and then
+works from twenty of the twenty-four sound stations passes.
+
+Reported residuals are then checked for self consistency. Each east, north, up
 triple is recomputed from the reported parameters and the recorded tie stations
 and compared as a whole vector within 0.05 m, allowing an overall sign flip so
 either direction convention passes. The comparison is deliberately not on
