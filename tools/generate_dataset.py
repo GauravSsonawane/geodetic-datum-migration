@@ -255,6 +255,18 @@ def main(root):
         for r in tie_rows:
             fh.write(",".join(r) + "\n")
 
+    # The verifier certifies the agent's residuals against these, rather than
+    # re-reading /app/data/tiepoints.csv, which the agent can rewrite during its run.
+    tie_truth = {}
+    for sid, enc, field, h_mm, wlat, wlon, wh in tie_rows:
+        lat, lon = DECODE[enc](field.ljust(30))
+        tie_truth[sid] = dict(
+            src=[round(v, 4) for v in
+                 g.geodetic_to_ecef(lat, lon, int(h_mm) / 1000.0, g.KID62)],
+            dst=[round(v, 4) for v in
+                 g.geodetic_to_ecef(float(wlat), float(wlon), float(wh), g.WGS84)],
+            wlat=float(wlat), wlon=float(wlon))
+
     lines, truth, names, void_ids = gen_archive()
     with open(os.path.join(data_dir, "archive.dat"), "w", newline="\n") as fh:
         fh.write("\n".join(lines) + "\n")
@@ -277,6 +289,7 @@ def main(root):
                        blunder_tie_points=sorted(BLUNDERS),
                        void_record_ids=sorted(void_ids),
                        expected_record_count=len(truth),
+                       tie_stations=tie_truth,
                        records=truth,
                        names=names), fh, indent=1, sort_keys=True)
 

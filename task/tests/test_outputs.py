@@ -16,14 +16,9 @@ import numpy as np
 import pytest
 
 OUT = "/app/out"
-DATA = "/app/data"
 GROUND_TRUTH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ground_truth.json")
 
 ARCSEC = math.pi / (180.0 * 3600.0)
-KID62_A, KID62_INVF = 6377295.664, 300.8017
-WGS84_A, WGS84_INVF = 6378137.0, 298.257223563
-GRID = dict(lat0=8.0, lon0=73.5, k0=0.99965, e0=250000.0, n0=150000.0)
-
 # --- tolerances --------------------------------------------------------------
 TOL_TRANSLATION_M = 10.0     # formal sigma of the adjustment is ~2.2-2.7 m
 TOL_ROTATION_ARCSEC = 0.35   # formal sigma ~0.06-0.08"
@@ -100,22 +95,6 @@ def by_id(features):
 
 
 # --- geodesy needed to re-derive the agent's own numbers ---------------------
-def _e2(a, invf):
-    f = 1.0 / invf
-    return 2.0 * f - f * f
-
-
-KID62_E2, WGS84_E2 = _e2(KID62_A, KID62_INVF), _e2(WGS84_A, WGS84_INVF)
-
-
-def _to_ecef(lat_deg, lon_deg, h, a, e2):
-    lat, lon = math.radians(lat_deg), math.radians(lon_deg)
-    sl, cl = math.sin(lat), math.cos(lat)
-    n = a / math.sqrt(1.0 - e2 * sl * sl)
-    return np.array([(n + h) * cl * math.cos(lon), (n + h) * cl * math.sin(lon),
-                     (n * (1.0 - e2) + h) * sl])
-
-
 def _helmert(xyz, p):
     rx, ry, rz = (p["rx_arcsec"] * ARCSEC, p["ry_arcsec"] * ARCSEC, p["rz_arcsec"] * ARCSEC)
     k = 1.0 + p["scale_ppm"] * 1e-6
@@ -125,68 +104,20 @@ def _helmert(xyz, p):
                      p["dz_m"] + k * (-ry * x + rx * y + z)])
 
 
-def _mer_arc(lat):
-    b = KID62_A * (1.0 - 1.0 / KID62_INVF)
-    n = (KID62_A - b) / (KID62_A + b)
-    lat0 = math.radians(GRID["lat0"])
-    d, s = lat - lat0, lat + lat0
-    return b * GRID["k0"] * (
-        (1 + n + 1.25 * n**2 + 1.25 * n**3) * d
-        - (3 * n + 3 * n**2 + 2.625 * n**3) * math.sin(d) * math.cos(s)
-        + (1.875 * n**2 + 1.875 * n**3) * math.sin(2 * d) * math.cos(2 * s)
-        - (35.0 / 24.0) * n**3 * math.sin(3 * d) * math.cos(3 * s))
-
-
-def _grid_to_geodetic(east, north):
-    lat = math.radians(GRID["lat0"])
-    for _ in range(30):
-        dn = north - GRID["n0"] - _mer_arc(lat)
-        if abs(dn) < 1e-9:
-            break
-        lat += dn / (KID62_A * GRID["k0"])
-    sl = math.sin(lat)
-    w = 1.0 - KID62_E2 * sl * sl
-    nu = KID62_A * GRID["k0"] / math.sqrt(w)
-    rho = KID62_A * GRID["k0"] * (1.0 - KID62_E2) / w ** 1.5
-    eta2, t, sec = nu / rho - 1.0, math.tan(lat), 1.0 / math.cos(lat)
-    de = east - GRID["e0"]
-    lat_f = (lat
-             - t / (2 * rho * nu) * de**2
-             + t / (24 * rho * nu**3) * (5 + 3 * t**2 + eta2 - 9 * t**2 * eta2) * de**4
-             - t / (720 * rho * nu**5) * (61 + 90 * t**2 + 45 * t**4) * de**6)
-    lon_f = (math.radians(GRID["lon0"])
-             + sec / nu * de
-             - sec / (6 * nu**3) * (nu / rho + 2 * t**2) * de**3
-             + sec / (120 * nu**5) * (5 + 28 * t**2 + 24 * t**4) * de**5
-             - sec / (5040 * nu**7) * (61 + 662 * t**2 + 1320 * t**4 + 720 * t**6) * de**7)
-    return math.degrees(lat_f), math.degrees(lon_f)
-
-
-def _decode_legacy(field, kind):
-    field = field.ljust(30)
-    if kind == "G":
-        a, b = field[0:10], field[11:22]
-        lat = int(a[0:2]) + int(a[2:4]) / 60.0 + int(a[4:9]) / 3.6e6
-        lon = int(b[0:3]) + int(b[3:5]) / 60.0 + int(b[5:10]) / 3.6e6
-        return (-lat if a[9] == "S" else lat), (-lon if b[10] == "W" else lon)
-    return _grid_to_geodetic(int(field[0:12]) / 1000.0, int(field[13:25]) / 1000.0)
-
-
 @pytest.fixture(scope="module")
-def tie_stations():
-    """The connection stations as shipped, indexed by identifier."""
-    import csv
-    out = {}
-    with open(os.path.join(DATA, "tiepoints.csv")) as fh:
-        for row in csv.DictReader(fh):
-            lat, lon = _decode_legacy(row["legacy_coord_field"], row["legacy_encoding"])
-            out[row["station_id"]] = dict(
-                src=_to_ecef(lat, lon, int(row["legacy_ellip_height_mm"]) / 1000.0,
-                             KID62_A, KID62_E2),
-                dst=_to_ecef(float(row["wgs84_lat_deg"]), float(row["wgs84_lon_deg"]),
-                             float(row["wgs84_ellip_height_m"]), WGS84_A, WGS84_E2),
-                wlat=float(row["wgs84_lat_deg"]), wlon=float(row["wgs84_lon_deg"]))
-    return out
+def tie_stations(truth):
+    """The connection stations as recorded when the archive was built.
+
+    Taken from ground truth rather than re-read from /app/data/tiepoints.csv. That
+    file sits on the agent's own writable filesystem, so certifying the reported
+    residuals against it would certify them against a file the agent could have
+    rewritten. Nothing the verifier grades is read from a path the agent can touch,
+    apart from the outputs it is asked to produce.
+    """
+    return {sid: dict(src=np.asarray(v["src"], dtype=float),
+                      dst=np.asarray(v["dst"], dtype=float),
+                      wlat=v["wlat"], wlon=v["wlon"])
+            for sid, v in truth["tie_stations"].items()}
 
 
 def _enu_basis(lat_deg, lon_deg):

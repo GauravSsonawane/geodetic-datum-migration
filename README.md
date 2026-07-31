@@ -94,6 +94,13 @@ falls — either way it ends up rejected, because after a clean fit it sits ~20�
 above the worst honest post-fit residual of 0.41 m. The same set comes out
 regardless of which stage removes each station.
 
+The verifier reads no agent-writable path except the three requested outputs. The
+tie stations it certifies residuals against are recorded in `ground_truth.json` when
+the archive is generated, not re-read from `/app/data/tiepoints.csv` — that file is
+on the agent's own filesystem, so grading residuals against it would let a rewritten
+copy certify fabricated ones. Verified: destroying every legacy coordinate in that
+file leaves the verdict unchanged.
+
 Reported residuals are recomputed from the agent's *own* parameters and compared as
 whole east/north/up vectors, allowing an overall sign flip so either direction
 convention passes. Magnitude-only comparison was tried first and is not enough: any
