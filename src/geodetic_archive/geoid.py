@@ -134,8 +134,8 @@ class GeoidGrid:
         """
         fi = (lat_deg - self.lat_min) / self.d_lat
         fj = (lon_deg - self.lon_min) / self.d_lon
-        i = min(max(int(math.floor(fi)), 0), self.n_lat - 2)
-        j = min(max(int(math.floor(fj)), 0), self.n_lon - 2)
+        i = min(max(math.floor(fi), 0), self.n_lat - 2)
+        j = min(max(math.floor(fj), 0), self.n_lon - 2)
         di, dj = fi - i, fj - j
         return (
             (1 - di) * (1 - dj) * self.values[i][j]

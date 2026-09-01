@@ -119,12 +119,12 @@ def test_negative_heights_survive_the_sign() -> None:
 
 
 def test_a_void_height_is_reported_with_its_record_and_line() -> None:
-    with pytest.raises(ArchiveFormatError, match="KA00001 .line 1. has a void height"):
+    with pytest.raises(ArchiveFormatError, match=r"KA00001 \(line 1\) has a void height"):
         _record(height_field="9" * 9).orthometric_height_m()
 
 
 def test_a_void_coordinate_is_reported_with_its_record_and_line() -> None:
-    with pytest.raises(ArchiveFormatError, match="KA00001 .line 1. has a void coordinate"):
+    with pytest.raises(ArchiveFormatError, match=r"KA00001 \(line 1\) has a void coordinate"):
         _record(coordinate_field="9" * 30).position()
 
 

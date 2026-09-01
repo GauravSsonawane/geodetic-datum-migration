@@ -1,20 +1,27 @@
 """Geodesy primitives and the true datum parameters used to build the dataset.
 
-Authoring tooling, outside task/ and never built into the image. See
-tools/generate_dataset.py."""
+Authoring tooling. It is not part of the installable package and the package never
+imports it: the true parameters live here and nowhere else, so a solver cannot read
+the answer out of the library it is using. See tools/generate_dataset.py.
+"""
+
 import math
 
-KID62 = dict(a=6377295.664, invf=300.8017)
-WGS84 = dict(a=6378137.0, invf=298.257223563)
+KID62 = {"a": 6377295.664, "invf": 300.8017}
+WGS84 = {"a": 6378137.0, "invf": 298.257223563}
 
-TM = dict(lat0=8.0, lon0=73.5, k0=0.99965, E0=250000.0, N0=150000.0)
+TM = {"lat0": 8.0, "lon0": 73.5, "k0": 0.99965, "E0": 250000.0, "N0": 150000.0}
 
 # True KID62 -> WGS84 Helmert, position-vector (Bursa-Wolf / EPSG 9606) convention.
-TRUE_PARAMS = dict(
-    dx=317.812, dy=708.176, dz=234.291,     # metres
-    rx=-1.8734, ry=2.4171, rz=-0.9265,      # arc-seconds
-    s=2.8137,                               # ppm
-)
+TRUE_PARAMS = {
+    "dx": 317.812,
+    "dy": 708.176,
+    "dz": 234.291,  # metres
+    "rx": -1.8734,
+    "ry": 2.4171,
+    "rz": -0.9265,  # arc-seconds
+    "s": 2.8137,  # ppm
+}
 
 ARCSEC = math.pi / (180.0 * 3600.0)
 
@@ -68,6 +75,7 @@ def kid62_to_wgs84(lat, lon, h):
 
 # --- Transverse Mercator (Redfearn series) on the KID62 ellipsoid -------------
 
+
 def _tm_consts(lat):
     a, e2 = KID62["a"], e2_of(KID62)
     k0 = TM["k0"]
@@ -84,11 +92,15 @@ def _meridional_arc(lat):
     n = (a - b) / (a + b)
     lat0 = math.radians(TM["lat0"])
     dl, sl = lat - lat0, lat + lat0
-    return b * TM["k0"] * (
-        (1 + n + 1.25 * n**2 + 1.25 * n**3) * dl
-        - (3 * n + 3 * n**2 + 2.625 * n**3) * math.sin(dl) * math.cos(sl)
-        + (1.875 * n**2 + 1.875 * n**3) * math.sin(2 * dl) * math.cos(2 * sl)
-        - (35.0 / 24.0) * n**3 * math.sin(3 * dl) * math.cos(3 * sl)
+    return (
+        b
+        * TM["k0"]
+        * (
+            (1 + n + 1.25 * n**2 + 1.25 * n**3) * dl
+            - (3 * n + 3 * n**2 + 2.625 * n**3) * math.sin(dl) * math.cos(sl)
+            + (1.875 * n**2 + 1.875 * n**3) * math.sin(2 * dl) * math.cos(2 * sl)
+            - (35.0 / 24.0) * n**3 * math.sin(3 * dl) * math.cos(3 * sl)
+        )
     )
 
 

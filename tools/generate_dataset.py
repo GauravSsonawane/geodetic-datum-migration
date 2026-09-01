@@ -13,6 +13,7 @@ for byte:
 The true transformation parameters live in tools/geodesy.py. Regenerating the
 inputs regenerates the ground truth alongside them, so the two cannot drift apart.
 """
+
 import json
 import math
 import os
@@ -38,32 +39,43 @@ GRID_LAT0, GRID_LON0, GRID_D, GRID_N = 7.0, 72.0, 0.5, 7
 
 
 def _geoid_analytic(lat, lon):
-    return (-36.0
-            + 2.8 * math.sin(0.9 * (lat - 8.5))
-            - 3.4 * math.cos(0.7 * (lon - 73.5))
-            + 0.6 * (lat - 8.5) * (lon - 73.5))
+    return (
+        -36.0
+        + 2.8 * math.sin(0.9 * (lat - 8.5))
+        - 3.4 * math.cos(0.7 * (lon - 73.5))
+        + 0.6 * (lat - 8.5) * (lon - 73.5)
+    )
 
 
-GEOID = [[round(_geoid_analytic(GRID_LAT0 + i * GRID_D, GRID_LON0 + j * GRID_D), 3)
-          for j in range(GRID_N)] for i in range(GRID_N)]
+GEOID = [
+    [
+        round(_geoid_analytic(GRID_LAT0 + i * GRID_D, GRID_LON0 + j * GRID_D), 3)
+        for j in range(GRID_N)
+    ]
+    for i in range(GRID_N)
+]
 
 
 def geoid_sep(lat, lon):
     """Bilinear interpolation of the shipped separation grid."""
     fi = (lat - GRID_LAT0) / GRID_D
     fj = (lon - GRID_LON0) / GRID_D
-    i = min(max(int(math.floor(fi)), 0), GRID_N - 2)
-    j = min(max(int(math.floor(fj)), 0), GRID_N - 2)
+    i = min(max(math.floor(fi), 0), GRID_N - 2)
+    j = min(max(math.floor(fj), 0), GRID_N - 2)
     di, dj = fi - i, fj - j
-    return ((1 - di) * (1 - dj) * GEOID[i][j] + (1 - di) * dj * GEOID[i][j + 1]
-            + di * (1 - dj) * GEOID[i + 1][j] + di * dj * GEOID[i + 1][j + 1])
+    return (
+        (1 - di) * (1 - dj) * GEOID[i][j]
+        + (1 - di) * dj * GEOID[i][j + 1]
+        + di * (1 - dj) * GEOID[i + 1][j]
+        + di * dj * GEOID[i + 1][j + 1]
+    )
 
 
 # ------------------------------------------------------------------- encoders
 def _dms_parts(v):
     d = int(v)
     m = int((v - d) * 60)
-    si = int(round((v - d - m / 60.0) * 3600.0 * 1000))
+    si = round((v - d - m / 60.0) * 3600.0 * 1000)
     if si >= 60000:
         si -= 60000
         m += 1
@@ -109,15 +121,49 @@ DECODE = {"G": dec_g, "D": dec_d, "P": dec_p}
 
 
 # -------------------------------------------------------------------- names
-PLACES = ["KAVERI", "PONMUDI", "ALANGAD", "THEKKADY", "VARKALA", "MANJERI",
-          "KUTTANAD", "ANJENGO", "KOLLAM", "NEDUMBASSERY", "PALLIPURAM",
-          "CHERTHALA", "MUNNAR", "IDUKKI", "ARUVIKKARA", "VAIKOM",
-          "KARUNAGAPALLY", "MAVELIKKARA", "THIRUVALLA", "CHENGANNUR",
-          "PANDALAM", "ADOOR", "KOTTARAKKARA", "PUNALUR", "ANCHAL",
-          "NEDUMANGAD", "ATTINGAL", "PARAVUR", "CHIRAYINKEEZHU", "VELLANAD"]
-KINDS = ["TRIG PILLAR", "BENCH MARK", "AZIMUTH MARK", "TIDAL STATION",
-         "REVENUE STONE", "SURVEY PILLAR", "TOWER STATION",
-         "ECCENTRIC STATION", "BASE TERMINAL"]
+PLACES = [
+    "KAVERI",
+    "PONMUDI",
+    "ALANGAD",
+    "THEKKADY",
+    "VARKALA",
+    "MANJERI",
+    "KUTTANAD",
+    "ANJENGO",
+    "KOLLAM",
+    "NEDUMBASSERY",
+    "PALLIPURAM",
+    "CHERTHALA",
+    "MUNNAR",
+    "IDUKKI",
+    "ARUVIKKARA",
+    "VAIKOM",
+    "KARUNAGAPALLY",
+    "MAVELIKKARA",
+    "THIRUVALLA",
+    "CHENGANNUR",
+    "PANDALAM",
+    "ADOOR",
+    "KOTTARAKKARA",
+    "PUNALUR",
+    "ANCHAL",
+    "NEDUMANGAD",
+    "ATTINGAL",
+    "PARAVUR",
+    "CHIRAYINKEEZHU",
+    "VELLANAD",
+]
+KINDS = [
+    "TRIG PILLAR",
+    "BENCH MARK",
+    "AZIMUTH MARK",
+    "TIDAL STATION",
+    "REVENUE STONE",
+    "SURVEY PILLAR",
+    "TOWER STATION",
+    "ECCENTRIC STATION",
+    "BASE TERMINAL",
+]
 
 
 def make_name(long_wanted):
@@ -146,8 +192,18 @@ def make_name(long_wanted):
 # rule-of-thumb cut in the low metres leaves several of them in, which inflates the
 # RMS and biases the parameters; separating them needs a cut taken from the observed
 # residual spread, which is where they sit at eight sigma and up.
-BLUNDERS = ["TP004", "TP007", "TP009", "TP011", "TP014",
-            "TP016", "TP022", "TP024", "TP027", "TP030"]
+BLUNDERS = [
+    "TP004",
+    "TP007",
+    "TP009",
+    "TP011",
+    "TP014",
+    "TP016",
+    "TP022",
+    "TP024",
+    "TP027",
+    "TP030",
+]
 
 
 def tie_encoding(k):
@@ -169,8 +225,17 @@ def gen_tie_points():
         wlat += rnd.gauss(0, 0.08) / 110900.0
         wlon += rnd.gauss(0, 0.08) / (111320.0 * math.cos(math.radians(rlat)))
         wh += rnd.gauss(0, 0.15)
-        rows.append([sid, enc, field.rstrip(), "%+010d" % h_mm,
-                     "%+.8f" % wlat, "%+.8f" % wlon, "%+.3f" % wh])
+        rows.append(
+            [
+                sid,
+                enc,
+                field.rstrip(),
+                "%+010d" % h_mm,
+                "%+.8f" % wlat,
+                "%+.8f" % wlon,
+                "%+.3f" % wh,
+            ]
+        )
     return rows
 
 
@@ -183,30 +248,29 @@ def apply_blunders(rows):
         r = by_id[sid]
         enc, f = r[1], r[2]
         before = DECODE[enc](f.ljust(30))
-        if sid == "TP007":                        # seconds digits transposed
+        if sid == "TP007":  # seconds digits transposed
             f = f[:4] + f[6] + f[5] + f[4] + f[7:]
-        elif sid == "TP011":                      # milliarcsecond digits transposed
+        elif sid == "TP011":  # milliarcsecond digits transposed
             f = f[:6] + f[8] + f[7] + f[6] + f[9:]
-        elif sid == "TP004":                      # 0.05" slip in the latitude seconds
+        elif sid == "TP004":  # 0.05" slip in the latitude seconds
             f = enc_g(before[0] + 0.050 / 3600.0, before[1]).rstrip()
-        elif sid == "TP014":                      # 0.10" slip in the longitude seconds
+        elif sid == "TP014":  # 0.10" slip in the longitude seconds
             f = enc_g(before[0], before[1] + 0.101 / 3600.0).rstrip()
-        elif sid == "TP009":                      # 2.5 m slip, easting decimetre column
+        elif sid == "TP009":  # 2.5 m slip, easting decimetre column
             f = "%012d" % (int(f[0:12]) + 2500) + f[12:]
-        elif sid == "TP027":                      # single-digit slip, metres column
+        elif sid == "TP027":  # single-digit slip, metres column
             f = "%012d" % (int(f[0:12]) + 8000) + f[12:]
-        elif sid == "TP016":                      # longitude hemisphere flipped
+        elif sid == "TP016":  # longitude hemisphere flipped
             f = f[:21] + "W" + f[22:]
-        elif sid == "TP022":                      # decimal degrees keyed into DMS slot
+        elif sid == "TP022":  # decimal degrees keyed into DMS slot
             f = ("%09d" % round(before[0] * 1e7))[:9] + f[9:]
-        elif sid == "TP024":                      # easting/northing swapped
+        elif sid == "TP024":  # easting/northing swapped
             f = f[13:25] + " " + f[0:12]
-        elif sid == "TP030":                      # +1 km typo in the easting
+        elif sid == "TP030":  # +1 km typo in the easting
             f = "%012d" % (int(f[0:12]) + 1_000_000) + f[12:]
         r[2] = f
         after = DECODE[enc](f.ljust(30))
-        d = math.hypot((after[0] - before[0]) * 110900.0,
-                       (after[1] - before[1]) * 110000.0)
+        d = math.hypot((after[0] - before[0]) * 110900.0, (after[1] - before[1]) * 110000.0)
         report[sid] = d
         assert enc == tie_encoding(int(sid[2:])), sid
     return report
@@ -216,8 +280,9 @@ def apply_blunders(rows):
 def gen_archive():
     lines, truth, names, void_ids = [], {}, {}, []
     void_coord = set(rnd.sample(range(1, N_REC + 1), N_VOID_COORD))
-    void_height = set(rnd.sample([i for i in range(1, N_REC + 1)
-                                  if i not in void_coord], N_VOID_HEIGHT))
+    void_height = set(
+        rnd.sample([i for i in range(1, N_REC + 1) if i not in void_coord], N_VOID_HEIGHT)
+    )
 
     for k in range(1, N_REC + 1):
         rid = "KA%05d" % k
@@ -232,10 +297,7 @@ def gen_archive():
         else:
             field = {"G": enc_g, "D": enc_d, "P": enc_p}[rtype](lat, lon)
 
-        if k in void_height:
-            hfield = "9" * 9
-        else:
-            hfield = "%+09d" % round(H * (100 if rtype == "D" else 10))
+        hfield = "9" * 9 if k in void_height else "%+09d" % round(H * (100 if rtype == "D" else 10))
 
         lines.append(rtype + rid + name[:24].ljust(24) + field + hfield)
         if len(name) > 24:
@@ -262,8 +324,10 @@ def main(root):
     tie_rows = gen_tie_points()
     blunder_report = apply_blunders(tie_rows)
     with open(os.path.join(data_dir, "tiepoints.csv"), "w", newline="\n") as fh:
-        fh.write("station_id,legacy_encoding,legacy_coord_field,legacy_ellip_height_mm,"
-                 "wgs84_lat_deg,wgs84_lon_deg,wgs84_ellip_height_m\n")
+        fh.write(
+            "station_id,legacy_encoding,legacy_coord_field,legacy_ellip_height_mm,"
+            "wgs84_lat_deg,wgs84_lon_deg,wgs84_ellip_height_m\n"
+        )
         for r in tie_rows:
             fh.write(",".join(r) + "\n")
 
@@ -272,12 +336,15 @@ def main(root):
     tie_truth = {}
     for sid, enc, field, h_mm, wlat, wlon, wh in tie_rows:
         lat, lon = DECODE[enc](field.ljust(30))
-        tie_truth[sid] = dict(
-            src=[round(v, 4) for v in
-                 g.geodetic_to_ecef(lat, lon, int(h_mm) / 1000.0, g.KID62)],
-            dst=[round(v, 4) for v in
-                 g.geodetic_to_ecef(float(wlat), float(wlon), float(wh), g.WGS84)],
-            wlat=float(wlat), wlon=float(wlon))
+        tie_truth[sid] = {
+            "src": [round(v, 4) for v in g.geodetic_to_ecef(lat, lon, int(h_mm) / 1000.0, g.KID62)],
+            "dst": [
+                round(v, 4)
+                for v in g.geodetic_to_ecef(float(wlat), float(wlon), float(wh), g.WGS84)
+            ],
+            "wlat": float(wlat),
+            "wlon": float(wlon),
+        }
 
     lines, truth, names, void_ids = gen_archive()
     with open(os.path.join(data_dir, "archive.dat"), "w", newline="\n") as fh:
@@ -286,31 +353,45 @@ def main(root):
     with open(os.path.join(data_dir, "geoid_kid62.grd"), "w", newline="\n") as fh:
         fh.write("# Kaveri Island geoid-ellipsoid separation model KIG61\n")
         fh.write("# N = h(ellipsoidal, KID62) - H(orthometric, Kaveri MSL 1961), metres\n")
-        fh.write("lat_min %.1f\nlat_max %.1f\nlon_min %.1f\nlon_max %.1f\n"
-                 % (GRID_LAT0, GRID_LAT0 + (GRID_N - 1) * GRID_D,
-                    GRID_LON0, GRID_LON0 + (GRID_N - 1) * GRID_D))
-        fh.write("d_lat %.1f\nd_lon %.1f\nn_lat %d\nn_lon %d\n"
-                 % (GRID_D, GRID_D, GRID_N, GRID_N))
+        fh.write(
+            "lat_min %.1f\nlat_max %.1f\nlon_min %.1f\nlon_max %.1f\n"
+            % (
+                GRID_LAT0,
+                GRID_LAT0 + (GRID_N - 1) * GRID_D,
+                GRID_LON0,
+                GRID_LON0 + (GRID_N - 1) * GRID_D,
+            )
+        )
+        fh.write("d_lat %.1f\nd_lon %.1f\nn_lat %d\nn_lon %d\n" % (GRID_D, GRID_D, GRID_N, GRID_N))
         fh.write("# one row per latitude, ascending from lat_min;\n")
         fh.write("# columns ascending in longitude from lon_min\n")
         for row in GEOID:
             fh.write(" ".join("%9.3f" % v for v in row) + "\n")
 
     with open(os.path.join(truth_dir, "ground_truth.json"), "w", newline="\n") as fh:
-        json.dump(dict(true_params=g.TRUE_PARAMS,
-                       blunder_tie_points=sorted(BLUNDERS),
-                       void_record_ids=sorted(void_ids),
-                       expected_record_count=len(truth),
-                       tie_stations=tie_truth,
-                       records=truth,
-                       names=names), fh, indent=1, sort_keys=True)
+        json.dump(
+            {
+                "true_params": g.TRUE_PARAMS,
+                "blunder_tie_points": sorted(BLUNDERS),
+                "void_record_ids": sorted(void_ids),
+                "expected_record_count": len(truth),
+                "tie_stations": tie_truth,
+                "records": truth,
+                "names": names,
+            },
+            fh,
+            indent=1,
+            sort_keys=True,
+        )
 
     print("archive lines       :", len(lines))
     print("records migratable  :", len(truth))
     print("void records        :", len(void_ids))
     print("continuation lines  :", len(lines) - N_REC)
-    print("geoid range         : %.3f .. %.3f"
-          % (min(min(r) for r in GEOID), max(max(r) for r in GEOID)))
+    print(
+        "geoid range         : %.3f .. %.3f"
+        % (min(min(r) for r in GEOID), max(max(r) for r in GEOID))
+    )
     for sid, d in sorted(blunder_report.items()):
         print("blunder %s displaced %11.1f m" % (sid, d))
 

@@ -246,7 +246,11 @@ def adjust(
         parameters = fit_helmert(kept)
         residuals = np.array(
             [
-                float(np.linalg.norm(station.wgs84_xyz - apply_helmert(station.legacy_xyz, parameters)))
+                float(
+                    np.linalg.norm(
+                        station.wgs84_xyz - apply_helmert(station.legacy_xyz, parameters)
+                    )
+                )
                 for station in kept
             ]
         )

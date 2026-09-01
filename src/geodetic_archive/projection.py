@@ -127,11 +127,7 @@ class TransverseMercator:
         d_e = easting_m - self.false_easting_m
         latitude = lat - vii * d_e**2 + viii * d_e**4 - ix * d_e**6
         longitude = (
-            math.radians(self.lon_origin_deg)
-            + x * d_e
-            - xi * d_e**3
-            + xii * d_e**5
-            - xiia * d_e**7
+            math.radians(self.lon_origin_deg) + x * d_e - xi * d_e**3 + xii * d_e**5 - xiia * d_e**7
         )
         return math.degrees(latitude), math.degrees(longitude)
 

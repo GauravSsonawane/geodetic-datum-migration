@@ -84,8 +84,7 @@ def decode_coordinate(
     """
     if encoding not in RECORD_TYPES:
         raise ArchiveFormatError(
-            f"unknown coordinate encoding {encoding!r}; "
-            f"expected one of {', '.join(RECORD_TYPES)}"
+            f"unknown coordinate encoding {encoding!r}; expected one of {', '.join(RECORD_TYPES)}"
         )
 
     padded = field.ljust(COORDINATE_FIELD_WIDTH)
@@ -108,8 +107,7 @@ def decode_coordinate(
         return grid.to_geodetic(easting_mm / 1000.0, northing_mm / 1000.0)
     except ValueError as exc:
         raise ArchiveFormatError(
-            f"type {encoding} coordinate field {field.strip()!r} "
-            f"does not match its layout: {exc}"
+            f"type {encoding} coordinate field {field.strip()!r} does not match its layout: {exc}"
         ) from exc
 
 
@@ -207,8 +205,7 @@ def read_archive(path: str | Path) -> list[ArchiveRecord]:
         if record_type == CONTINUATION_TYPE:
             if record_id not in name_segments:
                 raise ArchiveFormatError(
-                    f"{archive_path} line {number}: "
-                    f"continuation for unknown record {record_id!r}"
+                    f"{archive_path} line {number}: continuation for unknown record {record_id!r}"
                 )
             name_segments[record_id].append(line[_NAME])
             continue
