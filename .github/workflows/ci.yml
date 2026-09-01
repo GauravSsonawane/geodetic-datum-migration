@@ -76,6 +76,14 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@v5
+        with:
+          # Pinned deliberately. The currency check below recompiles and diffs, and
+          # different uv releases resolve differently -- 0.11.32 pins numpy at one
+          # version across the supported range where a later release splits it at
+          # 3.12. An unpinned resolver would make this job fail on the day uv
+          # changes rather than on the day the lockfile goes stale. Bump this and
+          # `make lock` together, in one commit, with the regenerated files.
+          version: "0.11.32"
       - name: The committed lockfile installs, hashes and all
         run: |
           python -m pip install --require-hashes --no-deps -r requirements-dev.txt

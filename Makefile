@@ -26,6 +26,9 @@ DATA_DIR ?= data
 OUT_DIR ?= out
 IMAGE ?= geodetic-archive
 
+# Kept in step with the pin in .github/workflows/ci.yml.
+UV_VERSION ?= 0.11.32
+
 .DEFAULT_GOAL := help
 .PHONY: help install lock lint format typecheck test audit check migrate verify \
         dataset docker-build docker-verify clean
@@ -39,7 +42,10 @@ install: ## Create ./.venv and install the package with its dev extras
 	$(VENV_BIN)/python -m pip install --upgrade pip
 	$(VENV_BIN)/python -m pip install -e ".[dev]"
 
-lock: ## Recompile the hash-pinned lockfiles from pyproject.toml (needs uv)
+lock: ## Recompile the hash-pinned lockfiles from pyproject.toml (needs uv $(UV_VERSION))
+	# Run this with uv $(UV_VERSION): CI pins the same version, because different uv
+	# releases resolve the same pyproject differently and the currency check diffs
+	# byte for byte. Bump both together.
 	# --universal: resolve for every platform, so a lock compiled on Windows and
 	#   one compiled on Linux agree. Without it the Windows-only pytest dependency
 	#   colorama is present or absent depending on who ran it.

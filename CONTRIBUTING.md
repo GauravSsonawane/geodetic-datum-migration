@@ -66,6 +66,13 @@ Add them to `pyproject.toml`, then run `make lock` and commit all three lockfile
 with the change. Never edit `requirements*.txt` or `uv.lock` by hand; the lockfile
 job recompiles them and diffs.
 
+Run `make lock` with the uv version the Makefile names in `UV_VERSION`, which is
+the version CI pins. Different uv releases resolve the same `pyproject.toml`
+differently — one pins numpy at a single version across the supported range where
+another splits it at 3.12 — and the currency check compares byte for byte. To move
+to a newer uv, bump `UV_VERSION`, bump the `version:` input on `astral-sh/setup-uv`
+in `.github/workflows/ci.yml`, re-run `make lock`, and commit all of it together.
+
 ## Releases
 
 Update [CHANGELOG.md](CHANGELOG.md) under `Unreleased` as you go. A release moves
