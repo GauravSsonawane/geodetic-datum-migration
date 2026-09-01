@@ -31,7 +31,7 @@ geodetic-archive = "geodetic_archive.cli:main"
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.4,<9",
+  "pytest>=9.0.3,<10",
   "pytest-cov>=6.0,<8",
   "ruff>=0.9,<1",
   "mypy>=1.14,<2",
@@ -69,7 +69,7 @@ known-first-party = ["geodetic_archive"]
 
 # ------------------------------------------------------------------- pytest
 [tool.pytest.ini_options]
-minversion = "8.0"
+minversion = "9.0"
 testpaths = ["tests"]
 addopts = [
   "-ra",
