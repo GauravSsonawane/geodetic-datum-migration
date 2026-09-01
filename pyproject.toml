@@ -98,7 +98,9 @@ exclude_lines = [
 
 # --------------------------------------------------------------------- mypy
 [tool.mypy]
-python_version = "3.11"
+# No python_version pin: numpy ships stubs that use PEP 695 `type` statements, so
+# telling mypy to assume 3.11 makes it reject its own dependency's stubs. It
+# checks under whichever interpreter it runs on instead, and CI runs 3.13.
 files = ["src", "tests", "tools"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
