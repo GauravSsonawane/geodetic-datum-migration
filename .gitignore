@@ -1,24 +1,30 @@
-# Git
-.git/
-
 # OS
 .DS_Store
+Thumbs.db
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.egg-info/
+build/
+dist/
 .venv/
+venv/
+
+# Tooling caches
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
-# Node
-node_modules/
-
-# Secrets
+# Local configuration — copy .env.example instead
 .env
 
-# Harbor
-dist.tar.gz
+# Pipeline output; regenerate with `make migrate`
+out/
+
+# Scratch output from earlier local evaluation runs
 jobs/

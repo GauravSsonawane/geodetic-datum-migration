@@ -1,0 +1,117 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geodetic-archive"
+version = "0.1.0"
+description = "Recover an unpublished geodetic datum transformation and migrate a legacy survey archive to WGS84."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["geodesy", "datum", "helmert", "wgs84", "etl", "geojson"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: GIS",
+]
+dependencies = ["numpy>=2.0,<3.0"]
+
+[project.urls]
+Homepage = "https://github.com/GauravSsonawane/geodetic-datum-migration"
+Source = "https://github.com/GauravSsonawane/geodetic-datum-migration"
+Changelog = "https://github.com/GauravSsonawane/geodetic-datum-migration/blob/main/CHANGELOG.md"
+
+[project.scripts]
+geodetic-archive = "geodetic_archive.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4,<9",
+  "pytest-cov>=6.0,<8",
+  "ruff>=0.9,<1",
+  "mypy>=1.14,<2",
+  "pip-audit>=2.7,<3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+geodetic_archive = ["py.typed"]
+
+# --------------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "tools", "acceptance"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM", "RUF"]
+ignore = [
+  # The geodesy series expansions are transcribed from published formulae and
+  # keep their single-letter symbols (nu, rho, t, de) on purpose.
+  "E741",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The dataset generator and the acceptance suite mirror the fixed-width record
+# layout with %-formatting, which is what the format spec is written in.
+"tools/*.py" = ["UP031"]
+"acceptance/*.py" = ["UP031"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["geodetic_archive"]
+
+# ------------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+  "-ra",
+  "--strict-markers",
+  "--strict-config",
+  "--cov=geodetic_archive",
+  "--cov-report=term-missing",
+  "--cov-fail-under=85",
+]
+markers = [
+  "slow: exercises the full 1200-record archive rather than a fixture slice",
+]
+
+# ----------------------------------------------------------------- coverage
+[tool.coverage.run]
+branch = true
+source = ["geodetic_archive"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+]
+
+# --------------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests", "tools"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+no_implicit_optional = true
+strict_equality = true
+pretty = true
+
+[[tool.mypy.overrides]]
+# The dataset generator is authoring tooling: it builds the fixtures the typed
+# package is tested against, and is checked for errors rather than annotations.
+module = ["tools.*", "generate_dataset", "geodesy"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
