@@ -1,0 +1,30 @@
+# Two services over one image: run the migration, then grade what it wrote.
+#
+#     docker compose run --rm migrate
+#     docker compose run --rm verify
+#
+# Both write into ./out on the host, so the acceptance suite grades the same files
+# a host-side run would.
+
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: runtime
+    image: geodetic-archive:local
+    volumes:
+      - ./out:/app/out
+    command: ["migrate", "--data", "/app/data", "--out", "/app/out"]
+
+  verify:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: verify
+    image: geodetic-archive:verify
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./out:/app/out
