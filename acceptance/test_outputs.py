@@ -1,12 +1,16 @@
-"""Verifier for dynamo/migrate-geodetic-archive.
+"""Acceptance suite for the KID62 -> WGS84 archive migration.
 
-Grades the three files instruction.md asks for against ground truth held only in
-/tests. The bands are justified in task.toml under verification_explanation. Each
-was checked to admit other defensible adjustments (a different subset of the sound
-stations carried into the fit, different interpolation of the separation grid) and
-to reject the methodological failures the task is built around: wrong ellipsoid on
-the legacy side, translation only shift, separation grid ignored, blunders left in
-the fit, and rotations reported under the other sign convention.
+Grades the three files described in docs/brief.md against ground truth held in
+acceptance/ground_truth.json. The tolerance bands are justified in docs/design.md.
+Each was checked to admit other defensible adjustments (a different subset of the
+sound stations carried into the fit, different interpolation of the separation
+grid) and to reject the methodological failures the dataset is built around: wrong
+ellipsoid on the legacy side, translation only shift, separation grid ignored,
+blunders left in the fit, and rotations reported under the other sign convention.
+
+The suite reads only the three output files. It never re-reads data/tiepoints.csv,
+so a rewritten input cannot certify a fabricated residual. Point it at a run with
+GEODETIC_OUT_DIR; it defaults to out/ beside this directory.
 """
 import json
 import math
@@ -15,7 +19,8 @@ import os
 import numpy as np
 import pytest
 
-OUT = "/app/out"
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.environ.get("GEODETIC_OUT_DIR", os.path.join(_REPO_ROOT, "out"))
 GROUND_TRUTH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ground_truth.json")
 
 ARCSEC = math.pi / (180.0 * 3600.0)
@@ -95,7 +100,7 @@ def by_id(features):
     return out
 
 
-# --- geodesy needed to re-derive the agent's own numbers ---------------------
+# --- geodesy needed to re-derive the solver's own numbers --------------------
 def _helmert(xyz, p):
     rx, ry, rz = (p["rx_arcsec"] * ARCSEC, p["ry_arcsec"] * ARCSEC, p["rz_arcsec"] * ARCSEC)
     k = 1.0 + p["scale_ppm"] * 1e-6
@@ -109,11 +114,11 @@ def _helmert(xyz, p):
 def tie_stations(truth):
     """The connection stations as recorded when the archive was built.
 
-    Taken from ground truth rather than re-read from /app/data/tiepoints.csv. That
-    file sits on the agent's own writable filesystem, so certifying the reported
-    residuals against it would certify them against a file the agent could have
-    rewritten. Nothing the verifier grades is read from a path the agent can touch,
-    apart from the outputs it is asked to produce.
+    Taken from ground truth rather than re-read from data/tiepoints.csv. That file
+    sits on the solver's own writable filesystem, so certifying the reported
+    residuals against it would certify them against a file the solver could have
+    rewritten. Nothing this suite grades is read from a path the solver can touch,
+    apart from the three outputs it is asked to produce.
     """
     return {sid: dict(src=np.asarray(v["src"], dtype=float),
                       dst=np.asarray(v["dst"], dtype=float),

@@ -1,13 +1,12 @@
-"""Dataset generator for dynamo/migrate-geodetic-archive.
+"""Dataset generator for the KID62 geodetic archive.
 
-Deliberately outside task/: this is authoring tooling, it is never built into the
-image, and the task does not reference it. It is kept in the repo so a reviewer can
-see where tests/ground_truth.json came from rather than take 1170 hardcoded records
-on trust.
+Authoring tooling, kept out of the installable package and never referenced by it.
+It is in the repository so the 1170 records in acceptance/ground_truth.json can be
+traced back to what produced them instead of being taken on trust.
 
-Writes the agent-visible inputs into task/environment/data/ and the verifier's
-ground truth into task/tests/ground_truth.json. Fixed seed, so regenerating
-reproduces both byte for byte:
+Writes the solver-visible inputs into data/ and the acceptance suite's ground truth
+into acceptance/ground_truth.json. Fixed seed, so regenerating reproduces both byte
+for byte:
 
     python tools/generate_dataset.py .
 
@@ -256,8 +255,8 @@ def gen_archive():
 
 # ----------------------------------------------------------------------- main
 def main(root):
-    data_dir = os.path.join(root, "task", "environment", "data")
-    tests_dir = os.path.join(root, "task", "tests")
+    data_dir = os.path.join(root, "data")
+    truth_dir = os.path.join(root, "acceptance")
     os.makedirs(data_dir, exist_ok=True)
 
     tie_rows = gen_tie_points()
@@ -268,8 +267,8 @@ def main(root):
         for r in tie_rows:
             fh.write(",".join(r) + "\n")
 
-    # The verifier certifies the agent's residuals against these, rather than
-    # re-reading /app/data/tiepoints.csv, which the agent can rewrite during its run.
+    # The acceptance suite certifies reported residuals against these, rather than
+    # re-reading data/tiepoints.csv, which a solver can rewrite during its run.
     tie_truth = {}
     for sid, enc, field, h_mm, wlat, wlon, wh in tie_rows:
         lat, lon = DECODE[enc](field.ljust(30))
@@ -297,7 +296,7 @@ def main(root):
         for row in GEOID:
             fh.write(" ".join("%9.3f" % v for v in row) + "\n")
 
-    with open(os.path.join(tests_dir, "ground_truth.json"), "w", newline="\n") as fh:
+    with open(os.path.join(truth_dir, "ground_truth.json"), "w", newline="\n") as fh:
         json.dump(dict(true_params=g.TRUE_PARAMS,
                        blunder_tie_points=sorted(BLUNDERS),
                        void_record_ids=sorted(void_ids),

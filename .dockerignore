@@ -1,0 +1,19 @@
+# The build context is the repository root. Keep out everything the image does
+# not need, so the context Docker uploads stays small and holds no local state.
+.git/
+.github/
+.venv/
+venv/
+jobs/
+out/
+docs/
+tools/
+**/__pycache__/
+**/*.py[cod]
+**/.DS_Store
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+*.egg-info/
+htmlcov/
+.coverage
