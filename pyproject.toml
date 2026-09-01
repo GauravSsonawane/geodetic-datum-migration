@@ -34,7 +34,7 @@ dev = [
   "pytest>=9.0.3,<10",
   "pytest-cov>=6.0,<8",
   "ruff>=0.9,<1",
-  "mypy>=1.14,<2",
+  "mypy>=1.14,<3",
   "pip-audit>=2.7,<3",
   # Imported directly by tools/check_lockfiles.py.
   "packaging>=24,<27",
