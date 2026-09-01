@@ -1,0 +1,30 @@
+# Dependency updates arrive as pull requests, which CI then has to pass: the
+# lockfile job proves the new pin installs with hashes and still matches
+# pyproject.toml, and the audit job proves it closes rather than opens an
+# advisory.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      dev-tooling:
+        patterns: ["ruff", "mypy", "pytest*", "pip-audit"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "docker"

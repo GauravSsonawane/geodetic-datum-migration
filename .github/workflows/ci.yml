@@ -1,0 +1,132 @@
+name: CI
+
+# Every job below runs a Makefile target, so `make check` locally is the same
+# thing the pipeline gates on.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  lint:
+    name: Lint and format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: python -m pip install -e ".[dev]"
+      - run: make lint
+
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: python -m pip install -e ".[dev]"
+      - run: make typecheck
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: python -m pip install -e ".[dev]"
+      - name: Host-side suite, coverage gated at 85%
+        run: make test
+      - name: End-to-end migration and grading
+        run: |
+          make migrate
+          make verify
+
+  lockfile:
+    name: Lockfile installs and is current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v5
+      - name: The committed lockfile installs, hashes and all
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements-dev.txt
+          python -m pip install --no-deps -e .
+          python -c "import geodetic_archive; print(geodetic_archive.__version__)"
+      - name: The lockfile still matches pyproject.toml
+        run: |
+          uv pip compile pyproject.toml --python-version 3.11 --generate-hashes \
+            -o /tmp/requirements.txt --quiet
+          uv pip compile pyproject.toml --extra dev --python-version 3.11 \
+            --generate-hashes -o /tmp/requirements-dev.txt --quiet
+          diff -u requirements.txt /tmp/requirements.txt
+          diff -u requirements-dev.txt /tmp/requirements-dev.txt
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -e ".[dev]"
+      - run: make audit
+
+  dataset:
+    name: Dataset reproduces byte for byte
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[dev]"
+      - name: Regenerating from the fixed seed changes nothing
+        run: |
+          make dataset
+          git diff --exit-code -- data acceptance/ground_truth.json
+
+  docker:
+    name: Container migrates and grades
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Migrate and grade inside containers
+        run: make docker-verify
+      - name: Keep the outputs for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-output
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
