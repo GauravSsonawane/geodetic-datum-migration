@@ -30,8 +30,8 @@ IMAGE ?= geodetic-archive
 UV_VERSION ?= 0.11.32
 
 .DEFAULT_GOAL := help
-.PHONY: help install lock lint format typecheck test audit check migrate verify \
-        dataset docker-build docker-verify clean
+.PHONY: help install lock lock-check lint format typecheck test audit check migrate \
+        verify dataset docker-build docker-verify clean
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -57,6 +57,9 @@ lock: ## Recompile the hash-pinned lockfiles from pyproject.toml (needs uv $(UV_
 		--generate-hashes --no-header -o requirements-dev.txt
 	uv lock
 
+lock-check: ## Check the lockfiles still pin what pyproject.toml declares
+	$(PY) tools/check_lockfiles.py
+
 lint: ## Check lint rules and formatting
 	$(TOOL)ruff check .
 	$(TOOL)ruff format --check .
@@ -74,7 +77,7 @@ test: ## Run the host-side suite with coverage, gated at 85%
 audit: ## Check the pinned dependencies for known vulnerabilities
 	$(TOOL)pip-audit --requirement requirements.txt --requirement requirements-dev.txt
 
-check: lint typecheck test ## Everything CI gates on, in one go
+check: lint typecheck lock-check test ## Everything CI gates on, in one go
 
 migrate: ## Run the migration into $(OUT_DIR)
 	$(PY) -m geodetic_archive.cli migrate --data $(DATA_DIR) --out $(OUT_DIR)

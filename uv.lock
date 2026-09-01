@@ -364,6 +364,7 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "packaging" },
     { name = "pip-audit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -374,6 +375,7 @@ dev = [
 requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.14,<2" },
     { name = "numpy", specifier = ">=2.0,<3.0" },
+    { name = "packaging", marker = "extra == 'dev'", specifier = ">=24,<27" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.7,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3,<10" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0,<8" },

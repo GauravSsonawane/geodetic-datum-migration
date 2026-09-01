@@ -157,12 +157,14 @@ rewrote its own inputs could not certify itself. See
 | `make test` | pytest with coverage, gated at 85% |
 | `make audit` | `pip-audit` over both requirement files |
 | `make lock` | recompile the hash-pinned lockfiles from `pyproject.toml` |
+| `make lock-check` | check the lockfiles still pin what `pyproject.toml` declares |
 | `make dataset` | regenerate `data/` and ground truth from the fixed seed |
 | `make docker-verify` | migrate and grade inside containers |
 
 CI runs all of it on every push and pull request, across Python 3.11, 3.12 and
-3.13, and additionally checks that the lockfiles still match `pyproject.toml` and
-that regenerating the dataset changes no committed byte.
+3.13, and additionally checks that the lockfiles install with their hashes and
+still pin what `pyproject.toml` declares, and that regenerating the dataset changes
+no committed byte.
 
 Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md). Changes:
 [CHANGELOG.md](CHANGELOG.md).

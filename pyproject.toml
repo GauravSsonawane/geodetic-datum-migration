@@ -36,6 +36,8 @@ dev = [
   "ruff>=0.9,<1",
   "mypy>=1.14,<2",
   "pip-audit>=2.7,<3",
+  # Imported directly by tools/check_lockfiles.py.
+  "packaging>=24,<27",
 ]
 
 [tool.setuptools.packages.find]

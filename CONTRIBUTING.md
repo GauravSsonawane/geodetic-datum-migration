@@ -19,7 +19,7 @@ Seven jobs, each of which is a Makefile target you can run yourself:
 | lint | `make lint` | `ruff check` and `ruff format --check` clean across the tree |
 | typecheck | `make typecheck` | `mypy` clean; new code in `src/` needs annotations |
 | test | `make test` | the suite passes on 3.11, 3.12 and 3.13, coverage ≥ 85% |
-| lockfile | — | the committed hashes install, and still match `pyproject.toml` |
+| lockfile | `make lock-check` | the committed hashes install, and pin what `pyproject.toml` declares |
 | audit | `make audit` | `pip-audit` reports nothing against either requirement file |
 | dataset | `make dataset` | regenerating changes no committed byte |
 | docker | `make docker-verify` | the container migrates and the acceptance suite passes |
@@ -66,12 +66,14 @@ Add them to `pyproject.toml`, then run `make lock` and commit all three lockfile
 with the change. Never edit `requirements*.txt` or `uv.lock` by hand; the lockfile
 job recompiles them and diffs.
 
-Run `make lock` with the uv version the Makefile names in `UV_VERSION`, which is
-the version CI pins. Different uv releases resolve the same `pyproject.toml`
-differently — one pins numpy at a single version across the supported range where
-another splits it at 3.12 — and the currency check compares byte for byte. To move
-to a newer uv, bump `UV_VERSION`, bump the `version:` input on `astral-sh/setup-uv`
-in `.github/workflows/ci.yml`, re-run `make lock`, and commit all of it together.
+`make lock-check` (part of `make check`, and its own CI job) verifies that every
+dependency `pyproject.toml` declares is pinned in both lockfiles at a version its
+specifier admits, and that the dev lock covers the runtime one. It deliberately
+does *not* recompile and diff: `uv pip compile` resolves differently depending on
+the host operating system, so that check failed on whoever ran `make lock` rather
+than on a stale lockfile. `UV_VERSION` in the Makefile records the uv the committed
+lockfiles were produced with, so a regeneration can be reproduced if it ever
+matters.
 
 ## Releases
 
