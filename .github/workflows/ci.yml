@@ -75,7 +75,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           # Pinned deliberately. The currency check below recompiles and diffs, and
           # different uv releases resolve differently -- 0.11.32 pins numpy at one
