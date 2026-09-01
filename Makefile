@@ -40,10 +40,12 @@ install: ## Create ./.venv and install the package with its dev extras
 	$(VENV_BIN)/python -m pip install -e ".[dev]"
 
 lock: ## Recompile the hash-pinned lockfiles from pyproject.toml (needs uv)
+	# --no-header: the header records the -o path, so without it the CI currency
+	# check would diff on where it recompiled rather than on what it resolved.
 	uv pip compile pyproject.toml --python-version 3.11 --generate-hashes \
-		-o requirements.txt
+		--no-header -o requirements.txt
 	uv pip compile pyproject.toml --extra dev --python-version 3.11 --generate-hashes \
-		-o requirements-dev.txt
+		--no-header -o requirements-dev.txt
 	uv lock
 
 lint: ## Check lint rules and formatting

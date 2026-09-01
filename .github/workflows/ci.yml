@@ -84,9 +84,9 @@ jobs:
       - name: The lockfile still matches pyproject.toml
         run: |
           uv pip compile pyproject.toml --python-version 3.11 --generate-hashes \
-            -o /tmp/requirements.txt --quiet
+            --no-header -o /tmp/requirements.txt --quiet
           uv pip compile pyproject.toml --extra dev --python-version 3.11 \
-            --generate-hashes -o /tmp/requirements-dev.txt --quiet
+            --generate-hashes --no-header -o /tmp/requirements-dev.txt --quiet
           diff -u requirements.txt /tmp/requirements.txt
           diff -u requirements-dev.txt /tmp/requirements-dev.txt
 
