@@ -9,7 +9,7 @@
 # grading runs against the same image that produced the outputs:
 #
 #     docker build -f docker/Dockerfile --target verify -t geodetic-archive:verify .
-FROM python:3.13-slim-bookworm@sha256:ed86c82274b3c69b52fb5820f358f0bd7df0b603332063cb5c6e32bd220c3e6e AS runtime
+FROM python:3.15-slim-bookworm@sha256:2a41267d9de9d358f77a1de356e0f16ecba8d39827855be0ce9ef4792edce402 AS runtime
 
 # Fail fast, and keep pip from writing anything it will not need again.
 ENV PYTHONDONTWRITEBYTECODE=1 \
